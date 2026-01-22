@@ -5,183 +5,149 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rekap Tunggakan ULP Tulung</title>
 
-<!-- Bootstrap -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- PapaParse -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 :root{
-  --pln-blue:#009FDA;
-  --pln-yellow:#FFD100;
-  --bg:#f8f9fa;
-  --text:#212529;
-  --card:#ffffff;
+  --pln:#009FDA;
+  --bg:#f6f8fa;
+  --text:#111;
+  --card:#fff;
 }
 [data-theme="dark"]{
   --bg:#121212;
-  --text:#eaeaea;
+  --text:#eee;
   --card:#1e1e1e;
 }
-
 body{
+  margin:0;
+  font-family:system-ui;
   background:var(--bg);
   color:var(--text);
-  padding:14px;
-  font-family:system-ui;
 }
-
-.header{
+header{
   display:flex;
+  gap:12px;
   align-items:center;
-  gap:14px;
-  border-bottom:3px solid var(--pln-blue);
-  padding-bottom:10px;
-  margin-bottom:16px;
-}
-.header img{height:42px}
-.title h1{font-size:1.4rem;margin:0;color:var(--pln-blue)}
-.title small{color:#6c757d}
-
-.card-ui{
-  background:var(--card);
-  border-radius:14px;
   padding:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,.08);
-  margin-bottom:14px;
+  border-bottom:3px solid var(--pln);
 }
-
-.nav-tabs .nav-link.active{
-  background:var(--pln-blue);
-  color:#fff;
-  border:none;
+header img{height:36px}
+h1{font-size:1.2rem;margin:0;color:var(--pln)}
+small{color:#666}
+.tabs{
+  display:flex;
+  gap:6px;
+  padding:10px;
 }
-.nav-tabs .nav-link{color:var(--pln-blue)}
-
-.table th{
-  cursor:pointer;
-  background:#212529;
-  color:#fff;
-}
-
-.badge-sort{
-  font-size:.65rem;
-  margin-left:4px;
-}
-
-.toggle{
-  border:none;
-  background:var(--pln-yellow);
-  padding:6px 10px;
+.tab{
+  padding:6px 12px;
   border-radius:8px;
-  font-size:.85rem;
+  border:1px solid var(--pln);
+  background:#fff;
+  color:var(--pln);
+  cursor:pointer;
 }
+.tab.active{
+  background:var(--pln);
+  color:#fff;
+}
+.toggle{
+  margin-left:auto;
+  background:#ffd100;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+}
+.card{
+  background:var(--card);
+  margin:10px;
+  border-radius:12px;
+  overflow:auto;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #ddd;
+}
+th{
+  background:#222;
+  color:#fff;
+  cursor:pointer;
+}
+tr:hover{background:#f1f1f1}
 </style>
 </head>
 
 <body data-theme="light">
 
-<div class="header">
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAAACXBIWXMAAAsSAAALEgHS3X78AAAF6ElEQVR4nO2dX2wUVRjHf7N3d9c2gkGQhKjA..." alt="PLN">
-  <div class="title">
+<header>
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAA..." alt="PLN">
+  <div>
     <h1>Rekap Tunggakan</h1>
     <small>ULP Tulung</small>
   </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchSheet('lembar1',this)">Lembar 1</div>
+  <div class="tab" onclick="switchSheet('lembar2',this)">Lembar 2</div>
+  <div class="tab" onclick="switchSheet('lembar3',this)">Lembar 3</div>
+  <button class="toggle" onclick="toggleTheme()">🌙</button>
 </div>
 
-<div class="d-flex justify-content-between mb-2">
-  <ul class="nav nav-tabs">
-    <li class="nav-item"><a class="nav-link active" onclick="switchSheet('lembar1')">Lembar 1</a></li>
-    <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar2')">Lembar 2</a></li>
-    <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar3')">Lembar 3</a></li>
-  </ul>
-  <button class="toggle" onclick="toggleTheme()">🌙 Dark</button>
-</div>
-
-<div class="card-ui">
-  <canvas id="chart"></canvas>
-</div>
-
-<div class="card-ui">
-  <div class="table-responsive">
-    <table class="table table-striped" id="table">
-      <thead></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<div class="card">
+  <table>
+    <thead></thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script>
 const SHEETS={
-  lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
-  lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
-  lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+ lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+ lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+ lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let data=[],sortCol=null,sortAsc=true,chart;
+let data=[],sortCol="",sortAsc=true;
 
 function toggleTheme(){
-  const b=document.body;
-  b.dataset.theme=b.dataset.theme==="dark"?"light":"dark";
+ document.body.dataset.theme =
+  document.body.dataset.theme==="dark"?"light":"dark";
 }
 
-function switchSheet(s){
-  document.querySelectorAll(".nav-link").forEach(n=>n.classList.remove("active"));
-  event.target.classList.add("active");
-  loadCSV(s);
+function switchSheet(s,el){
+ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+ el.classList.add("active");
+ loadCSV(s);
 }
 
 async function loadCSV(sheet){
-  const res=await fetch(SHEETS[sheet]);
-  const csv=await res.text();
-  const parsed=Papa.parse(csv,{header:true,skipEmptyLines:true});
-  data=parsed.data;
-  render();
+ const r=await fetch(SHEETS[sheet]);
+ const t=await r.text();
+ data=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
+ render();
 }
 
 function render(){
-  const cols=Object.keys(data[0]||{});
-  renderTable(cols,data);
-  renderChart(data);
-}
-
-function renderTable(cols,rows){
-  const thead=document.querySelector("#table thead");
-  const tbody=document.querySelector("#table tbody");
-  thead.innerHTML="<tr>"+cols.map(c=>`<th onclick="sortBy('${c}')">${c}</th>`).join("")+"</tr>";
-  tbody.innerHTML=rows.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
+ const cols=Object.keys(data[0]||{});
+ document.querySelector("thead").innerHTML=
+  "<tr>"+cols.map(c=>`<th onclick="sortBy('${c}')">${c}</th>`).join("")+"</tr>";
+ document.querySelector("tbody").innerHTML=
+  data.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
 }
 
 function sortBy(c){
-  sortAsc = sortCol===c ? !sortAsc : true;
-  sortCol=c;
-  data.sort((a,b)=>(a[c]||"").localeCompare(b[c]||"",undefined,{numeric:true})*(sortAsc?1:-1));
-  render();
-}
-
-function renderChart(rows){
-  const count={};
-  rows.forEach(r=>{
-    const t=r.tgl_lunas||"LAINNYA";
-    count[t]=(count[t]||0)+1;
-  });
-  if(chart) chart.destroy();
-  chart=new Chart(document.getElementById("chart"),{
-    type:"bar",
-    data:{
-      labels:Object.keys(count),
-      datasets:[{
-        label:"Jumlah",
-        data:Object.values(count),
-        backgroundColor:"#009FDA"
-      }]
-    },
-    options:{responsive:true}
-  });
+ sortAsc=sortCol===c?!sortAsc:true;
+ sortCol=c;
+ data.sort((a,b)=>
+  (a[c]||"").localeCompare(b[c]||"",undefined,{numeric:true})
+  *(sortAsc?1:-1));
+ render();
 }
 
 loadCSV("lembar1");
@@ -189,7 +155,6 @@ loadCSV("lembar1");
 
 </body>
 </html>
-
 
 
 
