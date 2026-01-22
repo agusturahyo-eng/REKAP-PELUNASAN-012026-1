@@ -9,383 +9,138 @@
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
 <style>
-  body { padding: 20px; }
-  th { cursor:pointer; user-select:none; white-space:nowrap; }
-  th .sort-icon { font-size:12px; margin-left:4px; opacity:.4 }
-  th.active .sort-icon { opacity:1; font-weight:bold }
-  .clickable-row:hover { background:#f1f1f1; cursor:pointer }
+body{padding:20px}
+th{cursor:pointer;user-select:none}
+th .sort-icon{font-size:12px;margin-left:4px;opacity:.4}
+th.active .sort-icon{opacity:1;font-weight:bold}
+.clickable-row:hover{background:#f1f1f1;cursor:pointer}
 </style>
 </head>
 
 <body>
 <div class="container">
-  <h2 class="mb-4 text-primary">📊 Rekap Data</h2>
+<h2 class="mb-4 text-primary">📊 Rekap Data</h2>
 
-  <ul class="nav nav-tabs mb-3" id="sheetTabs">
-    <li class="nav-item"><a class="nav-link active" href="#" onclick="switchSheet('lembar1')">Lembar 1</a></li>
-    <li class="nav-item"><a class="nav-link" href="#" onclick="switchSheet('lembar2')">Lembar 2</a></li>
-    <li class="nav-item"><a class="nav-link" href="#" onclick="switchSheet('lembar3')">Lembar 3</a></li>
-  </ul>
+<ul class="nav nav-tabs mb-3" id="sheetTabs">
+<li class="nav-item"><a class="nav-link active" href="#" onclick="switchSheet('lembar1')">Lembar 1</a></li>
+<li class="nav-item"><a class="nav-link" href="#" onclick="switchSheet('lembar2')">Lembar 2</a></li>
+<li class="nav-item"><a class="nav-link" href="#" onclick="switchSheet('lembar3')">Lembar 3</a></li>
+</ul>
 
-  <div class="mb-3">
-    <button id="backBtn" class="btn btn-secondary btn-sm d-none" onclick="goBack()">⬅️ Kembali</button>
-    <input id="searchBox" class="form-control d-none mt-2" placeholder="🔍 Cari data..." onkeyup="filterTable()">
-    <button id="exportBtn" class="btn btn-success btn-sm d-none mt-2" onclick="exportExcel()">⬇️ Export Excel</button>
-  </div>
+<div class="mb-3">
+<button id="backBtn" class="btn btn-secondary btn-sm d-none" onclick="goBack()">⬅️ Kembali</button>
+<input id="searchBox" class="form-control d-none mt-2" placeholder="🔍 Cari..." onkeyup="filterTable()">
+<button id="exportBtn" class="btn btn-success btn-sm d-none mt-2" onclick="exportExcel()">⬇️ Export</button>
+</div>
 
-  <div class="table-responsive">
-    <table id="dataTable" class="table table-bordered table-striped">
-      <thead id="tableHead" class="table-dark"></thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-  </div>
+<div class="table-responsive">
+<table id="dataTable" class="table table-bordered table-striped">
+<thead id="tableHead" class="table-dark"></thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+/* ========= GLOBAL DOM ========= */
+const tableBody=document.getElementById("tableBody");
+const tableHead=document.getElementById("tableHead");
+const dataTable=document.getElementById("dataTable");
+const searchBox=document.getElementById("searchBox");
+const backBtn=document.getElementById("backBtn");
+const exportBtn=document.getElementById("exportBtn");
 
-const tableBody  = document.getElementById("tableBody");
-const tableHead  = document.getElementById("tableHead");
-const dataTable  = document.getElementById("dataTable");
-const searchBox  = document.getElementById("searchBox");
-const backBtn    = document.getElementById("backBtn");
-const exportBtn  = document.getElementById("exportBtn");
-
-/* ================= CONFIG ================= */
-const SHEETS = {
-  lembar1: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
-  lembar2: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
-  lembar3: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+/* ========= CONFIG ========= */
+const SHEETS={
+lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let allData = [];
-let currentSheet = "lembar1";
-let currentLevel = "petugas";
-let currentPetugas = null;
-let sortState = { index:null, asc:true };
+let allData=[],currentSheet="lembar1",currentLevel="petugas",currentPetugas=null,sortState={index:null,asc:true};
 
-/* ================= LOAD ================= */
+/* ========= LOAD ========= */
 async function loadCSV(sheet){
-  const res = await fetch(SHEETS[sheet]);
-  const csv = await res.text();
-  let parsed = Papa.parse(csv,{header:true,skipEmptyLines:true});
-  if(parsed.meta.fields.length===1)
-    parsed = Papa.parse(csv,{header:true,skipEmptyLines:true,delimiter:";"});
-  allData = parsed.data;
-  renderPetugas();
+const res=await fetch(SHEETS[sheet]);
+const csv=await res.text();
+let p=Papa.parse(csv,{header:true,skipEmptyLines:true});
+if(p.meta.fields.length===1)p=Papa.parse(csv,{header:true,skipEmptyLines:true,delimiter:";"});
+allData=p.data;
+renderPetugas();
 }
 
-/* ================= RENDER ================= */
-function renderPetugas(){
-  currentLevel="petugas";
-  toggle(false,false,false);
-  const rekap={};
-  allData.forEach(r=>{ if(r.petugas){ rekap[r.petugas]=(rekap[r.petugas]||0)+1 }});
-  renderHeader(["Petugas","Jumlah Data"],1,true);
-  let total = Object.values(rekap).reduce((a,b)=>a+b,0);
-  let html = `<tr class="clickable-row" onclick="renderTanggal('ALL')">
-                <td><b>ALL</b></td><td><b>${total}</b></td></tr>`;
-  Object.keys(rekap).forEach(p=>{
-    html+=`<tr class="clickable-row" onclick="renderTanggal('${p}')">
-             <td>${p}</td><td>${rekap[p]}</td></tr>`;
-  });
-  tableBody.innerHTML=html;
-}
-
-function renderTanggal(p){
-  currentLevel="tanggal";
-  currentPetugas=p;
-  toggle(true,false,false);
-  const data = p==="ALL"?allData:allData.filter(r=>r.petugas===p);
-  const rekap={};
-  data.forEach(r=>{ if(r.tgl_lunas){ rekap[r.tgl_lunas]=(rekap[r.tgl_lunas]||0)+1 }});
-  renderHeader(["Tanggal Lunas","Jumlah Data"],1,true);
-  let html="";
-  Object.keys(rekap).forEach(t=>{
-    html+=`<tr class="clickable-row" onclick="renderDetail('${p}','${t}')">
-             <td>${t}</td><td>${rekap[t]}</td></tr>`;
-  });
-  tableBody.innerHTML=html;
-}
-
-function renderDetail(p,t){
-  currentLevel="detail";
-  toggle(true,true,true);
-  const data = p==="ALL"
-    ? allData.filter(r=>r.tgl_lunas===t)
-    : allData.filter(r=>r.petugas===p && r.tgl_lunas===t);
-  const h=["idpel","koked","nama","alamat","tarif","daya","rptag","rpbk","jumlah","petugas","tgl_lunas"];
-  renderHeader(h);
-  let html="";
-  data.forEach(r=>{
-    html+="<tr>";
-    h.forEach(k=>html+=`<td>${r[k]||""}</td>`);
-    html+="</tr>";
-  });
-  tableBody.innerHTML=html;
-}
-
-/* ================= SORT ================= */
-function renderHeader(h,def=null,desc=false){
-  sortState={index:def,asc:!desc};
-  let html="<tr>";
-  h.forEach((x,i)=>html+=`<th onclick="sortCol(${i})">${x}<span class="sort-icon">⇅</span></th>`);
-  html+="</tr>";
-  tableHead.innerHTML=html;
-  if(def!==null) sortCol(def,true);
-}
-
-function sortCol(c,force=false){
-  const rows=[...tableBody.querySelectorAll("tr")];
-  const ths=document.querySelectorAll("#tableHead th");
-  if(!rows.length) return;
-  const asc = force?sortState.asc:(sortState.index===c?!sortState.asc:true);
-  sortState={index:c,asc};
-  ths.forEach((t,i)=>{
-    t.classList.toggle("active",i===c);
-    t.querySelector(".sort-icon").textContent=i===c?(asc?"▲":"▼"):"⇅";
-  });
-  rows.sort((a,b)=>{
-    let A=a.children[c].innerText.trim(), B=b.children[c].innerText.trim();
-    let nA=parseFloat(A.replace(/[^0-9.-]/g,"")), nB=parseFloat(B.replace(/[^0-9.-]/g,""));
-    if(!isNaN(nA)&&!isNaN(nB)) return asc?nA-nB:nB-nA;
-    let dA=Date.parse(A), dB=Date.parse(B);
-    if(!isNaN(dA)&&!isNaN(dB)) return asc?dA-dB:dB-dA;
-    return asc?A.localeCompare(B,"id",{numeric:true}):B.localeCompare(A,"id",{numeric:true});
-  });
-  tableBody.innerHTML="";
-  rows.forEach(r=>tableBody.appendChild(r));
-}
-
-/* ================= UTIL ================= */
-function goBack(){ currentLevel==="detail"?renderTanggal(currentPetugas):renderPetugas(); }
-function filterTable(){
-  const q=searchBox.value.toLowerCase();
-  [...tableBody.rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none");
-}
-function exportExcel(){
-  saveAs(new Blob([dataTable.outerHTML],{type:"application/vnd.ms-excel"}),currentSheet+".xls");
-}
-function toggle(b,s,e){
-  backBtn.classList.toggle("d-none",!b);
-  searchBox.classList.toggle("d-none",!s);
-  exportBtn.classList.toggle("d-none",!e);
-}
-window.switchSheet = s=>{
-  currentSheet=s;
-  document.querySelectorAll("#sheetTabs .nav-link").forEach(x=>x.classList.remove("active"));
-  document.querySelector(`#sheetTabs .nav-item:nth-child(${s==="lembar1"?1:s==="lembar2"?2:3}) .nav-link`).classList.add("active");
-  loadCSV(s);
+/* ========= RENDER ========= */
+window.renderPetugas=function(){
+currentLevel="petugas";
+toggle(false,false,false);
+const r={};
+allData.forEach(x=>{if(x.petugas)r[x.petugas]=(r[x.petugas]||0)+1});
+renderHeader(["Petugas","Jumlah Data"],1,true);
+let t=Object.values(r).reduce((a,b)=>a+b,0);
+let h=`<tr class="clickable-row" onclick="renderTanggal('ALL')"><td><b>ALL</b></td><td><b>${t}</b></td></tr>`;
+Object.keys(r).forEach(p=>h+=`<tr class="clickable-row" onclick="renderTanggal('${p}')"><td>${p}</td><td>${r[p]}</td></tr>`);
+tableBody.innerHTML=h;
 };
+
+window.renderTanggal=function(p){
+currentLevel="tanggal";currentPetugas=p;
+toggle(true,false,false);
+const d=p==="ALL"?allData:allData.filter(x=>x.petugas===p);
+const r={};
+d.forEach(x=>{if(x.tgl_lunas)r[x.tgl_lunas]=(r[x.tgl_lunas]||0)+1});
+renderHeader(["Tanggal Lunas","Jumlah Data"],1,true);
+let h="";
+Object.keys(r).forEach(t=>h+=`<tr class="clickable-row" onclick="renderDetail('${p}','${t}')"><td>${t}</td><td>${r[t]}</td></tr>`);
+tableBody.innerHTML=h;
+};
+
+window.renderDetail=function(p,t){
+currentLevel="detail";
+toggle(true,true,true);
+const d=p==="ALL"?allData.filter(x=>x.tgl_lunas===t):allData.filter(x=>x.petugas===p&&x.tgl_lunas===t);
+const h=["idpel","koked","nama","alamat","tarif","daya","rptag","rpbk","jumlah","petugas","tgl_lunas"];
+renderHeader(h);
+let b="";
+d.forEach(x=>{b+="<tr>";h.forEach(k=>b+=`<td>${x[k]||""}</td>`);b+="</tr>";});
+tableBody.innerHTML=b;
+};
+
+/* ========= SORT ========= */
+function renderHeader(h,d=null,desc=false){
+sortState={index:d,asc:!desc};
+let r="<tr>";
+h.forEach((x,i)=>r+=`<th onclick="sortCol(${i})">${x}<span class="sort-icon">⇅</span></th>`);
+r+="</tr>";
+tableHead.innerHTML=r;
+if(d!==null)sortCol(d,true);
+}
+
+window.sortCol=function(c,f=false){
+const rows=[...tableBody.rows];
+const ths=tableHead.querySelectorAll("th");
+const asc=f?sortState.asc:(sortState.index===c?!sortState.asc:true);
+sortState={index:c,asc};
+ths.forEach((t,i)=>{t.classList.toggle("active",i===c);t.querySelector(".sort-icon").textContent=i===c?(asc?"▲":"▼"):"⇅";});
+rows.sort((a,b)=>{
+let A=a.children[c].innerText,B=b.children[c].innerText;
+let nA=parseFloat(A.replace(/[^0-9.-]/g,"")),nB=parseFloat(B.replace(/[^0-9.-]/g,""));
+if(!isNaN(nA)&&!isNaN(nB))return asc?nA-nB:nB-nA;
+let dA=Date.parse(A),dB=Date.parse(B);
+if(!isNaN(dA)&&!isNaN(dB))return asc?dA-dB:dB-dA;
+return asc?A.localeCompare(B,"id",{numeric:true}):B.localeCompare(A,"id",{numeric:true});
+});
+tableBody.innerHTML="";
+rows.forEach(r=>tableBody.appendChild(r));
+};
+
+/* ========= UTIL ========= */
+window.goBack=()=>currentLevel==="detail"?renderTanggal(currentPetugas):renderPetugas();
+window.filterTable=()=>[...tableBody.rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(searchBox.value.toLowerCase())?"":"none");
+window.exportExcel=()=>saveAs(new Blob([dataTable.outerHTML],{type:"application/vnd.ms-excel"}),currentSheet+".xls");
+function toggle(b,s,e){backBtn.classList.toggle("d-none",!b);searchBox.classList.toggle("d-none",!s);exportBtn.classList.toggle("d-none",!e);}
+window.switchSheet=s=>{currentSheet=s;document.querySelectorAll("#sheetTabs .nav-link").forEach(x=>x.classList.remove("active"));document.querySelector(`#sheetTabs .nav-item:nth-child(${s==="lembar1"?1:s==="lembar2"?2:3}) .nav-link`).classList.add("active");loadCSV(s);};
 
 loadCSV("lembar1");
-
-});
 </script>
 </body>
 </html>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <title>Rekap Data</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <style>
-    body { padding: 20px; }
-    th { cursor: pointer; }
-    .clickable-row:hover { background-color: #f1f1f1; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2 class="mb-4 text-primary">📊 Rekap Data</h2>
-
-    <!-- Tabs -->
-    <ul class="nav nav-tabs mb-3" id="sheetTabs">
-      <li class="nav-item">
-        <a class="nav-link active" href="#" onclick="switchSheet('lembar1')">Lembar 1</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#" onclick="switchSheet('lembar2')">Lembar 2</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#" onclick="switchSheet('lembar3')">Lembar 3</a>
-      </li>
-    </ul>
-
-    <div class="mb-3">
-      <button id="backBtn" onclick="goBack()" class="btn btn-secondary btn-sm d-none">⬅️ Kembali</button>
-      <input type="text" id="searchBox" placeholder="🔍 Cari data..." onkeyup="filterTable()" class="form-control d-none mt-2">
-      <button id="exportBtn" onclick="exportExcel()" class="btn btn-success btn-sm d-none mt-2">⬇️ Export Excel</button>
-    </div>
-
-    <div class="table-responsive">
-      <table id="dataTable" class="table table-bordered table-striped">
-        <thead id="tableHead" class="table-dark"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <script>
-    const SHEETS = {
-      lembar1: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
-      lembar2: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
-      lembar3: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
-    };
-
-    let allData = [];
-    let currentSheet = "lembar1";
-    let currentLevel = "petugas";
-    let currentPetugas = null;
-    let currentTanggal = null;
-
-    async function loadCSV(sheet) {
-      const res = await fetch(SHEETS[sheet]);
-      const csvText = await res.text();
-
-      let parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      if (parsed.meta.fields.length === 1) {
-        parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true, delimiter: ";" });
-      }
-      allData = parsed.data;
-
-      renderPetugas();
-    }
-
-    function renderPetugas() {
-      currentLevel = "petugas";
-      toggleControls(false, false, false);
-
-      const rekap = {};
-      allData.forEach(row => {
-        if (!rekap[row.petugas]) rekap[row.petugas] = 0;
-        rekap[row.petugas]++;
-      });
-
-      renderTableHeader(["Petugas", "Jumlah Data"]);
-
-      // hitung total untuk ALL
-      const totalAll = Object.values(rekap).reduce((a, b) => a + b, 0);
-
-      let bodyHTML = "";
-      // Tambah baris ALL di paling atas
-      bodyHTML += `<tr class="clickable-row" onclick="renderTanggal('ALL')">
-                     <td><b>All</b></td><td><b>${totalAll}</b></td>
-                   </tr>`;
-
-      Object.keys(rekap).forEach(p => {
-        bodyHTML += `<tr class="clickable-row" onclick="renderTanggal('${p}')">
-                        <td>${p}</td><td>${rekap[p]}</td>
-                     </tr>`;
-      });
-      document.getElementById("tableBody").innerHTML = bodyHTML;
-    }
-
-    function renderTanggal(petugas) {
-      currentLevel = "tanggal";
-      currentPetugas = petugas;
-      toggleControls(true, false, false);
-
-      let filtered;
-      if (petugas === "ALL") {
-        filtered = allData;
-      } else {
-        filtered = allData.filter(row => row.petugas === petugas);
-      }
-
-      const rekap = {};
-      filtered.forEach(row => {
-        if (!rekap[row.tgl_lunas]) rekap[row.tgl_lunas] = 0;
-        rekap[row.tgl_lunas]++;
-      });
-
-      renderTableHeader(["Tanggal Lunas", "Jumlah Data"]);
-
-      let bodyHTML = "";
-      Object.keys(rekap).forEach(tgl => {
-        bodyHTML += `<tr class="clickable-row" onclick="renderDetailTanggal('${petugas}','${tgl}')">
-                        <td>${tgl}</td><td>${rekap[tgl]}</td>
-                     </tr>`;
-      });
-      document.getElementById("tableBody").innerHTML = bodyHTML;
-    }
-
-    function renderDetailTanggal(petugas, tanggal) {
-      currentLevel = "detail";
-      currentTanggal = tanggal;
-      toggleControls(true, true, true);
-
-      let filtered;
-      if (petugas === "ALL") {
-        filtered = allData.filter(row => row.tgl_lunas === tanggal);
-      } else {
-        filtered = allData.filter(row => row.petugas === petugas && row.tgl_lunas === tanggal);
-      }
-
-      const headers = ["idpel", "koked", "nama", "alamat", "tarif", "daya", "rptag", "rpbk", "jumlah", "petugas", "tgl_lunas"];
-      renderTableHeader(headers);
-
-      let bodyHTML = "";
-      filtered.forEach(row => {
-        bodyHTML += "<tr>";
-        headers.forEach(h => {
-          bodyHTML += `<td>${row[h] || ""}</td>`;
-        });
-        bodyHTML += "</tr>";
-      });
-      document.getElementById("tableBody").innerHTML = bodyHTML;
-    }
-
-    function renderTableHeader(headers) {
-      let headHTML = "<tr>";
-      headers.forEach(h => headHTML += `<th>${h}</th>`);
-      headHTML += "</tr>";
-      document.getElementById("tableHead").innerHTML = headHTML;
-    }
-
-    function goBack() {
-      if (currentLevel === "tanggal") {
-        renderPetugas();
-      } else if (currentLevel === "detail") {
-        renderTanggal(currentPetugas);
-      }
-    }
-
-    function filterTable() {
-      const q = document.getElementById("searchBox").value.toLowerCase();
-      const rows = document.querySelectorAll("#tableBody tr");
-      rows.forEach(r => {
-        r.style.display = r.innerText.toLowerCase().includes(q) ? "" : "none";
-      });
-    }
-
-    function exportExcel() {
-      const table = document.getElementById("dataTable").outerHTML;
-      const blob = new Blob([table], { type: "application/vnd.ms-excel" });
-      saveAs(blob, `${currentSheet}.xls`);
-    }
-
-    function toggleControls(back, search, exportBtn) {
-      document.getElementById("backBtn").classList.toggle("d-none", !back);
-      document.getElementById("searchBox").classList.toggle("d-none", !search);
-      document.getElementById("exportBtn").classList.toggle("d-none", !exportBtn);
-    }
-
-    function switchSheet(sheet) {
-      currentSheet = sheet;
-      document.querySelectorAll("#sheetTabs .nav-link").forEach(el => el.classList.remove("active"));
-      document.querySelector(`#sheetTabs .nav-item:nth-child(${sheet === 'lembar1' ? 1 : sheet === 'lembar2' ? 2 : 3}) .nav-link`).classList.add("active");
-      loadCSV(sheet);
-    }
-
-    // load awal
-    loadCSV("lembar1");
-  </script>
-</body>
-</html>
-
-
-
