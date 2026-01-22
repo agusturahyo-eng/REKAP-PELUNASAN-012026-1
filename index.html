@@ -35,7 +35,7 @@ th{cursor:pointer}
   }
 }
 
-/* SORT DROPDOWN HANYA MOBILE */
+/* SORT MOBILE */
 #mobileSort{display:none}
 @media(max-width:768px){
   #mobileSort{display:block}
@@ -48,18 +48,17 @@ th{cursor:pointer}
 
 <h3 class="text-primary mb-3">📊 Rekap Data</h3>
 
-<ul class="nav nav-tabs mb-3">
-  <li class="nav-item"><a class="nav-link active" onclick="switchSheet('lembar1')">Lembar 1</a></li>
-  <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar2')">Lembar 2</a></li>
-  <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar3')">Lembar 3</a></li>
+<ul class="nav nav-tabs mb-3" id="sheetTabs">
+  <li class="nav-item"><a class="nav-link active" data-sheet="lembar1">Lembar 1</a></li>
+  <li class="nav-item"><a class="nav-link" data-sheet="lembar2">Lembar 2</a></li>
+  <li class="nav-item"><a class="nav-link" data-sheet="lembar3">Lembar 3</a></li>
 </ul>
 
 <div class="mb-2">
-  <button id="backBtn" class="btn btn-secondary btn-sm d-none" onclick="goBack()">⬅ Kembali</button>
-  <input id="searchBox" class="form-control mt-2 d-none" placeholder="🔍 Cari..." onkeyup="filterTable()">
+  <button id="backBtn" class="btn btn-secondary btn-sm d-none">⬅ Kembali</button>
+  <input id="searchBox" class="form-control mt-2 d-none" placeholder="🔍 Cari...">
 
-  <!-- SORT ANDROID -->
-  <select id="mobileSort" class="form-select mt-2 d-none" onchange="mobileSortChange()">
+  <select id="mobileSort" class="form-select mt-2 d-none">
     <option value="">↕ Urutkan Data</option>
     <option value="idpel">ID Pelanggan</option>
     <option value="nama">Nama</option>
@@ -69,7 +68,7 @@ th{cursor:pointer}
     <option value="tgl_lunas">Tanggal Lunas</option>
   </select>
 
-  <button id="exportBtn" class="btn btn-success btn-sm mt-2 d-none" onclick="exportExcel()">⬇ Export Excel</button>
+  <button id="exportBtn" class="btn btn-success btn-sm mt-2 d-none">⬇ Export Excel</button>
 </div>
 
 <div class="table-responsive">
@@ -82,40 +81,71 @@ th{cursor:pointer}
 </div>
 
 <script>
+/* ================= DATA SOURCE ================= */
 const SHEETS={
  lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
  lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
  lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let allData=[],currentSheet="lembar1";
-let level="petugas",petugasAktif=null,tglAktif=null;
-let sortCol=null,sortAsc=true;
+/* ================= STATE ================= */
+let allData=[];
+let currentSheet="lembar1";
+let level="petugas";
+let petugasAktif=null;
+let tglAktif=null;
+let sortCol=null;
+let sortAsc=true;
 
+/* ================= INIT ================= */
+document.addEventListener("DOMContentLoaded",()=>{
+  loadCSV("lembar1");
+
+  document.querySelectorAll("#sheetTabs .nav-link").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      switchSheet(tab.dataset.sheet);
+      document.querySelectorAll("#sheetTabs .nav-link").forEach(n=>n.classList.remove("active"));
+      tab.classList.add("active");
+    });
+  });
+
+  backBtn.onclick=goBack;
+  searchBox.onkeyup=filterTable;
+  exportBtn.onclick=exportExcel;
+  mobileSort.onchange=mobileSortChange;
+});
+
+/* ================= CORE ================= */
 async function loadCSV(sheet){
- const r=await fetch(SHEETS[sheet]);
- const t=await r.text();
- allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
+ const res=await fetch(SHEETS[sheet]);
+ const txt=await res.text();
+ allData=Papa.parse(txt,{header:true,skipEmptyLines:true}).data;
  renderPetugas();
 }
 
 function renderPetugas(){
  level="petugas";
  toggle(false,false,false);
+
  const map={};
  allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
+
  renderHeader(["Petugas","Jumlah"]);
 
- let html=`<tr class="clickable-row" onclick="renderTanggal('ALL')">
+ let html=`<tr class="clickable-row" data-p="ALL">
  <td data-label="Petugas"><b>ALL</b></td>
  <td data-label="Jumlah"><b>${Object.values(map).reduce((a,b)=>a+b,0)}</b></td></tr>`;
 
  Object.keys(map).forEach(p=>{
-  html+=`<tr class="clickable-row" onclick="renderTanggal('${p}')">
+  html+=`<tr class="clickable-row" data-p="${p}">
   <td data-label="Petugas">${p}</td>
   <td data-label="Jumlah">${map[p]}</td></tr>`;
  });
- body(html);
+
+ tableBody.innerHTML=html;
+ tableBody.querySelectorAll("tr").forEach(r=>{
+  r.onclick=()=>renderTanggal(r.dataset.p);
+ });
 }
 
 function renderTanggal(p){
@@ -128,13 +158,18 @@ function renderTanggal(p){
  d.forEach(r=>map[r.tgl_lunas]=(map[r.tgl_lunas]||0)+1);
 
  renderHeader(["Tanggal","Jumlah"]);
+
  let html="";
  Object.keys(map).forEach(t=>{
-  html+=`<tr class="clickable-row" onclick="renderDetail('${p}','${t}')">
+  html+=`<tr class="clickable-row" data-t="${t}">
   <td data-label="Tanggal">${t}</td>
   <td data-label="Jumlah">${map[t]}</td></tr>`;
  });
- body(html);
+
+ tableBody.innerHTML=html;
+ tableBody.querySelectorAll("tr").forEach(r=>{
+  r.onclick=()=>renderDetail(p,r.dataset.t);
+ });
 }
 
 function renderDetail(p,t){
@@ -142,7 +177,6 @@ function renderDetail(p,t){
  petugasAktif=p;
  tglAktif=t;
  mobileSort.value="";
-
  toggle(true,true,true);
 
  let d=allData.filter(r=>(p==="ALL"||r.petugas===p)&&r.tgl_lunas===t);
@@ -165,18 +199,25 @@ function renderDetail(p,t){
   h.forEach(c=>html+=`<td data-label="${c.toUpperCase()}">${r[c]||""}</td>`);
   html+="</tr>";
  });
- body(html);
+ tableBody.innerHTML=html;
 }
 
-function renderHeader(h,sortable=false){
- let html="<tr>";
- h.forEach(c=>{
-  html+=sortable?`<th onclick="sortBy('${c}')">${c}</th>`:`<th>${c}</th>`;
+function renderHeader(cols,sortable=false){
+ let h="<tr>";
+ cols.forEach(c=>{
+  h+=sortable?`<th data-col="${c}">${c}</th>`:`<th>${c}</th>`;
  });
- html+="</tr>";
- tableHead.innerHTML=html;
+ h+="</tr>";
+ tableHead.innerHTML=h;
+
+ if(sortable){
+  tableHead.querySelectorAll("th").forEach(th=>{
+    th.onclick=()=>sortBy(th.dataset.col);
+  });
+ }
 }
 
+/* ================= UI ================= */
 function sortBy(c){
  sortAsc = sortCol===c ? !sortAsc : true;
  sortCol=c;
@@ -203,8 +244,6 @@ function toggle(back,search,exportBtn){
  }
 }
 
-function body(h){tableBody.innerHTML=h}
-
 function goBack(){
  level==="detail" ? renderTanggal(petugasAktif) : renderPetugas();
 }
@@ -223,13 +262,11 @@ function exportExcel(){
 
 function switchSheet(s){
  currentSheet=s;
- document.querySelectorAll(".nav-link").forEach(n=>n.classList.remove("active"));
- event.target.classList.add("active");
  loadCSV(s);
 }
-
-loadCSV("lembar1");
 </script>
 </body>
 </html>
+
+
 
