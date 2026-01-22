@@ -34,6 +34,12 @@ th{cursor:pointer}
     font-size:12px
   }
 }
+
+/* SORT MOBILE HANYA ANDROID */
+#mobileSort{display:none}
+@media(max-width:768px){
+  #mobileSort{display:block}
+}
 </style>
 </head>
 
@@ -51,6 +57,8 @@ th{cursor:pointer}
 <div class="mb-2">
   <button id="backBtn" class="btn btn-secondary btn-sm d-none" onclick="goBack()">⬅ Kembali</button>
   <input id="searchBox" class="form-control mt-2 d-none" placeholder="🔍 Cari..." onkeyup="filterTable()">
+
+  <!-- SORT ANDROID -->
   <select id="mobileSort" class="form-select mt-2 d-none" onchange="mobileSortChange()">
     <option value="">↕ Urutkan Data</option>
     <option value="idpel">ID Pelanggan</option>
@@ -60,6 +68,7 @@ th{cursor:pointer}
     <option value="jumlah">Jumlah</option>
     <option value="tgl_lunas">Tanggal Lunas</option>
   </select>
+
   <button id="exportBtn" class="btn btn-success btn-sm mt-2 d-none" onclick="exportExcel()">⬇ Export Excel</button>
 </div>
 
@@ -126,13 +135,21 @@ function renderTanggal(p){
 function renderDetail(p,t){
  level="detail";tglAktif=t;
  toggle(true,true,true);
+
  let d=allData.filter(r=>(p==="ALL"||r.petugas===p)&&r.tgl_lunas===t);
- if(sortCol)d.sort((a,b)=>{
-  let x=a[sortCol]||"",y=b[sortCol]||"";
-  return sortAsc?x.localeCompare(y,undefined,{numeric:true}):y.localeCompare(x,undefined,{numeric:true});
- });
+
+ if(sortCol){
+  d.sort((a,b)=>{
+   let x=a[sortCol]||"",y=b[sortCol]||"";
+   return sortAsc
+    ? x.localeCompare(y,undefined,{numeric:true})
+    : y.localeCompare(x,undefined,{numeric:true});
+  });
+ }
+
  const h=["idpel","koked","nama","alamat","tarif","daya","rptag","rpbk","jumlah","petugas","tgl_lunas"];
  renderHeader(h,true);
+
  let html="";
  d.forEach(r=>{
   html+="<tr>";
@@ -152,7 +169,7 @@ function renderHeader(h,sortable=false){
 }
 
 function sortBy(c){
- sortAsc=sortCol===c?!sortAsc:true;
+ sortAsc = sortCol===c ? !sortAsc : true;
  sortCol=c;
  renderDetail(petugasAktif,tglAktif);
 }
@@ -166,24 +183,32 @@ function mobileSortChange(){
 }
 
 function body(h){tableBody.innerHTML=h}
-function toggle(b,s,e){
- backBtn.classList.toggle("d-none",!b);
- searchBox.classList.toggle("d-none",!s);
- exportBtn.classList.toggle("d-none",!e);
- mobileSort.classList.toggle("d-none",!(e&&innerWidth<768));
+
+function toggle(back,search,exportBtn){
+ backBtn.classList.toggle("d-none",!back);
+ searchBox.classList.toggle("d-none",!search);
+ exportBtn.classList.toggle("d-none",!exportBtn);
+
+ /* SORT MOBILE MUNCUL SAAT DETAIL */
+ mobileSort.classList.toggle("d-none",!exportBtn);
 }
 
-function goBack(){level==="detail"?renderTanggal(petugasAktif):renderPetugas()}
+function goBack(){
+ level==="detail" ? renderTanggal(petugasAktif) : renderPetugas();
+}
+
 function filterTable(){
  const q=searchBox.value.toLowerCase();
  document.querySelectorAll("#tableBody tr").forEach(r=>{
   r.style.display=r.innerText.toLowerCase().includes(q)?"":"none";
  });
 }
+
 function exportExcel(){
  const blob=new Blob([dataTable.outerHTML],{type:"application/vnd.ms-excel"});
  saveAs(blob,currentSheet+".xls");
 }
+
 function switchSheet(s){
  currentSheet=s;
  document.querySelectorAll(".nav-link").forEach(n=>n.classList.remove("active"));
