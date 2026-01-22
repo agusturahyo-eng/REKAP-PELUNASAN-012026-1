@@ -1,6 +1,192 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<meta charset="UTF-8">
+<title>Rekap Data</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<style>
+  body { padding: 20px; }
+  th { cursor:pointer; user-select:none; white-space:nowrap; }
+  th .sort-icon { font-size:12px; margin-left:4px; opacity:.4 }
+  th.active .sort-icon { opacity:1; font-weight:bold }
+  .clickable-row:hover { background:#f1f1f1; cursor:pointer }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h2 class="mb-4 text-primary">📊 Rekap Data</h2>
+
+  <ul class="nav nav-tabs mb-3" id="sheetTabs">
+    <li class="nav-item"><a class="nav-link active" href="#" onclick="switchSheet('lembar1')">Lembar 1</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="switchSheet('lembar2')">Lembar 2</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="switchSheet('lembar3')">Lembar 3</a></li>
+  </ul>
+
+  <div class="mb-3">
+    <button id="backBtn" class="btn btn-secondary btn-sm d-none" onclick="goBack()">⬅️ Kembali</button>
+    <input id="searchBox" class="form-control d-none mt-2" placeholder="🔍 Cari data..." onkeyup="filterTable()">
+    <button id="exportBtn" class="btn btn-success btn-sm d-none mt-2" onclick="exportExcel()">⬇️ Export Excel</button>
+  </div>
+
+  <div class="table-responsive">
+    <table id="dataTable" class="table table-bordered table-striped">
+      <thead id="tableHead" class="table-dark"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+const tableBody  = document.getElementById("tableBody");
+const tableHead  = document.getElementById("tableHead");
+const dataTable  = document.getElementById("dataTable");
+const searchBox  = document.getElementById("searchBox");
+const backBtn    = document.getElementById("backBtn");
+const exportBtn  = document.getElementById("exportBtn");
+
+/* ================= CONFIG ================= */
+const SHEETS = {
+  lembar1: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+  lembar2: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+  lembar3: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+};
+
+let allData = [];
+let currentSheet = "lembar1";
+let currentLevel = "petugas";
+let currentPetugas = null;
+let sortState = { index:null, asc:true };
+
+/* ================= LOAD ================= */
+async function loadCSV(sheet){
+  const res = await fetch(SHEETS[sheet]);
+  const csv = await res.text();
+  let parsed = Papa.parse(csv,{header:true,skipEmptyLines:true});
+  if(parsed.meta.fields.length===1)
+    parsed = Papa.parse(csv,{header:true,skipEmptyLines:true,delimiter:";"});
+  allData = parsed.data;
+  renderPetugas();
+}
+
+/* ================= RENDER ================= */
+function renderPetugas(){
+  currentLevel="petugas";
+  toggle(false,false,false);
+  const rekap={};
+  allData.forEach(r=>{ if(r.petugas){ rekap[r.petugas]=(rekap[r.petugas]||0)+1 }});
+  renderHeader(["Petugas","Jumlah Data"],1,true);
+  let total = Object.values(rekap).reduce((a,b)=>a+b,0);
+  let html = `<tr class="clickable-row" onclick="renderTanggal('ALL')">
+                <td><b>ALL</b></td><td><b>${total}</b></td></tr>`;
+  Object.keys(rekap).forEach(p=>{
+    html+=`<tr class="clickable-row" onclick="renderTanggal('${p}')">
+             <td>${p}</td><td>${rekap[p]}</td></tr>`;
+  });
+  tableBody.innerHTML=html;
+}
+
+function renderTanggal(p){
+  currentLevel="tanggal";
+  currentPetugas=p;
+  toggle(true,false,false);
+  const data = p==="ALL"?allData:allData.filter(r=>r.petugas===p);
+  const rekap={};
+  data.forEach(r=>{ if(r.tgl_lunas){ rekap[r.tgl_lunas]=(rekap[r.tgl_lunas]||0)+1 }});
+  renderHeader(["Tanggal Lunas","Jumlah Data"],1,true);
+  let html="";
+  Object.keys(rekap).forEach(t=>{
+    html+=`<tr class="clickable-row" onclick="renderDetail('${p}','${t}')">
+             <td>${t}</td><td>${rekap[t]}</td></tr>`;
+  });
+  tableBody.innerHTML=html;
+}
+
+function renderDetail(p,t){
+  currentLevel="detail";
+  toggle(true,true,true);
+  const data = p==="ALL"
+    ? allData.filter(r=>r.tgl_lunas===t)
+    : allData.filter(r=>r.petugas===p && r.tgl_lunas===t);
+  const h=["idpel","koked","nama","alamat","tarif","daya","rptag","rpbk","jumlah","petugas","tgl_lunas"];
+  renderHeader(h);
+  let html="";
+  data.forEach(r=>{
+    html+="<tr>";
+    h.forEach(k=>html+=`<td>${r[k]||""}</td>`);
+    html+="</tr>";
+  });
+  tableBody.innerHTML=html;
+}
+
+/* ================= SORT ================= */
+function renderHeader(h,def=null,desc=false){
+  sortState={index:def,asc:!desc};
+  let html="<tr>";
+  h.forEach((x,i)=>html+=`<th onclick="sortCol(${i})">${x}<span class="sort-icon">⇅</span></th>`);
+  html+="</tr>";
+  tableHead.innerHTML=html;
+  if(def!==null) sortCol(def,true);
+}
+
+function sortCol(c,force=false){
+  const rows=[...tableBody.querySelectorAll("tr")];
+  const ths=document.querySelectorAll("#tableHead th");
+  if(!rows.length) return;
+  const asc = force?sortState.asc:(sortState.index===c?!sortState.asc:true);
+  sortState={index:c,asc};
+  ths.forEach((t,i)=>{
+    t.classList.toggle("active",i===c);
+    t.querySelector(".sort-icon").textContent=i===c?(asc?"▲":"▼"):"⇅";
+  });
+  rows.sort((a,b)=>{
+    let A=a.children[c].innerText.trim(), B=b.children[c].innerText.trim();
+    let nA=parseFloat(A.replace(/[^0-9.-]/g,"")), nB=parseFloat(B.replace(/[^0-9.-]/g,""));
+    if(!isNaN(nA)&&!isNaN(nB)) return asc?nA-nB:nB-nA;
+    let dA=Date.parse(A), dB=Date.parse(B);
+    if(!isNaN(dA)&&!isNaN(dB)) return asc?dA-dB:dB-dA;
+    return asc?A.localeCompare(B,"id",{numeric:true}):B.localeCompare(A,"id",{numeric:true});
+  });
+  tableBody.innerHTML="";
+  rows.forEach(r=>tableBody.appendChild(r));
+}
+
+/* ================= UTIL ================= */
+function goBack(){ currentLevel==="detail"?renderTanggal(currentPetugas):renderPetugas(); }
+function filterTable(){
+  const q=searchBox.value.toLowerCase();
+  [...tableBody.rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none");
+}
+function exportExcel(){
+  saveAs(new Blob([dataTable.outerHTML],{type:"application/vnd.ms-excel"}),currentSheet+".xls");
+}
+function toggle(b,s,e){
+  backBtn.classList.toggle("d-none",!b);
+  searchBox.classList.toggle("d-none",!s);
+  exportBtn.classList.toggle("d-none",!e);
+}
+window.switchSheet = s=>{
+  currentSheet=s;
+  document.querySelectorAll("#sheetTabs .nav-link").forEach(x=>x.classList.remove("active"));
+  document.querySelector(`#sheetTabs .nav-item:nth-child(${s==="lembar1"?1:s==="lembar2"?2:3}) .nav-link`).classList.add("active");
+  loadCSV(s);
+};
+
+loadCSV("lembar1");
+
+});
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="id">
+<head>
   <meta charset="UTF-8">
   <title>Rekap Data</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -200,5 +386,6 @@
   </script>
 </body>
 </html>
+
 
 
