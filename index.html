@@ -35,7 +35,7 @@ th{cursor:pointer}
   }
 }
 
-/* SORT MOBILE HANYA ANDROID */
+/* SORT DROPDOWN HANYA MOBILE */
 #mobileSort{display:none}
 @media(max-width:768px){
   #mobileSort{display:block}
@@ -105,9 +105,11 @@ function renderPetugas(){
  const map={};
  allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
  renderHeader(["Petugas","Jumlah"]);
+
  let html=`<tr class="clickable-row" onclick="renderTanggal('ALL')">
  <td data-label="Petugas"><b>ALL</b></td>
  <td data-label="Jumlah"><b>${Object.values(map).reduce((a,b)=>a+b,0)}</b></td></tr>`;
+
  Object.keys(map).forEach(p=>{
   html+=`<tr class="clickable-row" onclick="renderTanggal('${p}')">
   <td data-label="Petugas">${p}</td>
@@ -117,11 +119,14 @@ function renderPetugas(){
 }
 
 function renderTanggal(p){
- level="tanggal";petugasAktif=p;
+ level="tanggal";
+ petugasAktif=p;
  toggle(true,false,false);
+
  let d=p==="ALL"?allData:allData.filter(r=>r.petugas===p);
  const map={};
  d.forEach(r=>map[r.tgl_lunas]=(map[r.tgl_lunas]||0)+1);
+
  renderHeader(["Tanggal","Jumlah"]);
  let html="";
  Object.keys(map).forEach(t=>{
@@ -133,7 +138,11 @@ function renderTanggal(p){
 }
 
 function renderDetail(p,t){
- level="detail";tglAktif=t;
+ level="detail";
+ petugasAktif=p;
+ tglAktif=t;
+ mobileSort.value="";
+
  toggle(true,true,true);
 
  let d=allData.filter(r=>(p==="ALL"||r.petugas===p)&&r.tgl_lunas===t);
@@ -182,16 +191,19 @@ function mobileSortChange(){
  window.scrollTo({top:0,behavior:"smooth"});
 }
 
-function body(h){tableBody.innerHTML=h}
-
 function toggle(back,search,exportBtn){
  backBtn.classList.toggle("d-none",!back);
  searchBox.classList.toggle("d-none",!search);
  exportBtn.classList.toggle("d-none",!exportBtn);
 
- /* SORT MOBILE MUNCUL SAAT DETAIL */
- mobileSort.classList.toggle("d-none",!exportBtn);
+ if(level==="detail"){
+  mobileSort.classList.remove("d-none");
+ }else{
+  mobileSort.classList.add("d-none");
+ }
 }
+
+function body(h){tableBody.innerHTML=h}
 
 function goBack(){
  level==="detail" ? renderTanggal(petugasAktif) : renderPetugas();
@@ -220,3 +232,4 @@ loadCSV("lembar1");
 </script>
 </body>
 </html>
+
