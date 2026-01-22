@@ -5,214 +5,191 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rekap Tunggakan ULP Tulung</title>
 
+<!-- Bootstrap -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- PapaParse -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 :root{
   --pln-blue:#009FDA;
-  --pln-yellow:#FFD200;
+  --pln-yellow:#FFD100;
+  --bg:#f8f9fa;
+  --text:#212529;
+  --card:#ffffff;
+}
+[data-theme="dark"]{
+  --bg:#121212;
+  --text:#eaeaea;
+  --card:#1e1e1e;
 }
 
 body{
-  padding:15px;
-  background:#f5f6f8;
+  background:var(--bg);
+  color:var(--text);
+  padding:14px;
+  font-family:system-ui;
 }
 
-/* ===== HEADER PLN ===== */
-.header-pln{
+.header{
   display:flex;
   align-items:center;
   gap:14px;
-  margin-bottom:18px;
-  padding-bottom:10px;
   border-bottom:3px solid var(--pln-blue);
+  padding-bottom:10px;
+  margin-bottom:16px;
 }
-.header-pln img{height:42px}
-.header-pln .title h4{
-  margin:0;
-  font-weight:700;
-  color:var(--pln-blue);
-}
-.header-pln .title small{
-  color:#555;
-  font-weight:600;
+.header img{height:42px}
+.title h1{font-size:1.4rem;margin:0;color:var(--pln-blue)}
+.title small{color:#6c757d}
+
+.card-ui{
+  background:var(--card);
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  margin-bottom:14px;
 }
 
-/* ===== NAV ===== */
-.nav-tabs .nav-link{
-  color:var(--pln-blue);
-  font-weight:600;
-}
 .nav-tabs .nav-link.active{
   background:var(--pln-blue);
   color:#fff;
-  border-color:var(--pln-blue);
+  border:none;
+}
+.nav-tabs .nav-link{color:var(--pln-blue)}
+
+.table th{
+  cursor:pointer;
+  background:#212529;
+  color:#fff;
 }
 
-/* ===== BUTTON ===== */
-.btn-success{
+.badge-sort{
+  font-size:.65rem;
+  margin-left:4px;
+}
+
+.toggle{
+  border:none;
   background:var(--pln-yellow);
-  border-color:var(--pln-yellow);
-  color:#000;
-  font-weight:600;
+  padding:6px 10px;
+  border-radius:8px;
+  font-size:.85rem;
 }
-.btn-success:hover{
-  background:#e6bf00;
-  border-color:#e6bf00;
-}
-
-th{cursor:pointer}
-.clickable-row:hover{background:#eef}
-
-/* ===== MOBILE CARD ===== */
-@media(max-width:768px){
-  table thead{display:none}
-  table,tbody,tr,td{display:block;width:100%}
-  tr{
-    background:#fff;
-    margin-bottom:12px;
-    border-radius:10px;
-    padding:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,.1)
-  }
-  td{border:none;padding:4px 0}
-  td::before{
-    content:attr(data-label);
-    font-weight:600;
-    font-size:12px;
-    color:#666;
-    display:block
-  }
-  #mobileSort{display:block}
-}
-#mobileSort{display:none}
 </style>
 </head>
 
-<body>
-<div class="container">
+<body data-theme="light">
 
-<!-- HEADER -->
-<div class="header-pln">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/PLN_Electricity_Services_logo.svg/512px-PLN_Electricity_Services_logo.svg.png">
+<div class="header">
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAAACXBIWXMAAAsSAAALEgHS3X78AAAF6ElEQVR4nO2dX2wUVRjHf7N3d9c2gkGQhKjA..." alt="PLN">
   <div class="title">
-    <h4>Rekap Tunggakan</h4>
+    <h1>Rekap Tunggakan</h1>
     <small>ULP Tulung</small>
   </div>
 </div>
 
-<!-- TAB -->
-<ul class="nav nav-tabs mb-3" id="sheetTabs">
-  <li class="nav-item"><a class="nav-link active" data-sheet="lembar1">Lembar 1</a></li>
-  <li class="nav-item"><a class="nav-link" data-sheet="lembar2">Lembar 2</a></li>
-  <li class="nav-item"><a class="nav-link" data-sheet="lembar3">Lembar 3</a></li>
-</ul>
-
-<div class="mb-2">
-  <button id="backBtn" class="btn btn-secondary btn-sm d-none">⬅ Kembali</button>
-  <input id="searchBox" class="form-control mt-2 d-none" placeholder="🔍 Cari data...">
-  <select id="mobileSort" class="form-select mt-2 d-none">
-    <option value="">↕ Urutkan Data</option>
-    <option value="idpel">ID Pel</option>
-    <option value="nama">Nama</option>
-    <option value="tarif">Tarif</option>
-    <option value="daya">Daya</option>
-    <option value="jumlah">Jumlah</option>
-    <option value="tgl_lunas">Tanggal</option>
-  </select>
-  <button id="exportBtn" class="btn btn-success btn-sm mt-2 d-none">⬇ Export Excel</button>
+<div class="d-flex justify-content-between mb-2">
+  <ul class="nav nav-tabs">
+    <li class="nav-item"><a class="nav-link active" onclick="switchSheet('lembar1')">Lembar 1</a></li>
+    <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar2')">Lembar 2</a></li>
+    <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar3')">Lembar 3</a></li>
+  </ul>
+  <button class="toggle" onclick="toggleTheme()">🌙 Dark</button>
 </div>
 
-<div class="table-responsive">
-<table id="dataTable" class="table table-bordered table-striped">
-  <thead id="tableHead" class="table-dark"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
+<div class="card-ui">
+  <canvas id="chart"></canvas>
 </div>
 
+<div class="card-ui">
+  <div class="table-responsive">
+    <table class="table table-striped" id="table">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
 const SHEETS={
- lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
- lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
- lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+  lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+  lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+  lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let allData=[],level="petugas",petugasAktif=null,tglAktif=null;
-let sortCol=null,sortAsc=true;
+let data=[],sortCol=null,sortAsc=true,chart;
 
-document.addEventListener("DOMContentLoaded",()=>{
- loadCSV("lembar1");
- document.querySelectorAll("#sheetTabs .nav-link").forEach(t=>{
-  t.onclick=()=>{
-   document.querySelectorAll("#sheetTabs .nav-link").forEach(n=>n.classList.remove("active"));
-   t.classList.add("active");
-   loadCSV(t.dataset.sheet);
-  }
- });
- backBtn.onclick=goBack;
- searchBox.onkeyup=filterTable;
- exportBtn.onclick=exportExcel;
- mobileSort.onchange=()=>{sortCol=mobileSort.value;sortAsc=true;renderDetail(petugasAktif,tglAktif)};
-});
-
-async function loadCSV(s){
- const txt=await (await fetch(SHEETS[s])).text();
- let p=Papa.parse(txt,{header:true,skipEmptyLines:true});
- if(p.meta.fields.length===1)p=Papa.parse(txt,{header:true,skipEmptyLines:true,delimiter:";"});
- allData=p.data.filter(r=>r.petugas);
- renderPetugas();
+function toggleTheme(){
+  const b=document.body;
+  b.dataset.theme=b.dataset.theme==="dark"?"light":"dark";
 }
 
-function renderPetugas(){
- level="petugas";toggle(false,false,false);
- const m={};allData.forEach(r=>m[r.petugas]=(m[r.petugas]||0)+1);
- renderHead(["Petugas","Jumlah"]);
- let h=`<tr class="clickable-row" data-p="ALL"><td data-label="Petugas"><b>ALL</b></td><td data-label="Jumlah"><b>${Object.values(m).reduce((a,b)=>a+b,0)}</b></td></tr>`;
- Object.keys(m).forEach(p=>h+=`<tr class="clickable-row" data-p="${p}"><td data-label="Petugas">${p}</td><td data-label="Jumlah">${m[p]}</td></tr>`);
- tableBody.innerHTML=h;
- tableBody.querySelectorAll("tr").forEach(r=>r.onclick=()=>renderTanggal(r.dataset.p));
+function switchSheet(s){
+  document.querySelectorAll(".nav-link").forEach(n=>n.classList.remove("active"));
+  event.target.classList.add("active");
+  loadCSV(s);
 }
 
-function renderTanggal(p){
- level="tanggal";petugasAktif=p;toggle(true,false,false);
- const d=p==="ALL"?allData:allData.filter(r=>r.petugas===p);
- const m={};d.forEach(r=>m[r.tgl_lunas]=(m[r.tgl_lunas]||0)+1);
- renderHead(["Tanggal","Jumlah"]);
- tableBody.innerHTML=Object.keys(m).map(t=>`<tr class="clickable-row" data-t="${t}"><td data-label="Tanggal">${t}</td><td data-label="Jumlah">${m[t]}</td></tr>`).join("");
- tableBody.querySelectorAll("tr").forEach(r=>r.onclick=()=>renderDetail(p,r.dataset.t));
+async function loadCSV(sheet){
+  const res=await fetch(SHEETS[sheet]);
+  const csv=await res.text();
+  const parsed=Papa.parse(csv,{header:true,skipEmptyLines:true});
+  data=parsed.data;
+  render();
 }
 
-function renderDetail(p,t){
- level="detail";petugasAktif=p;tglAktif=t;toggle(true,true,true);
- let d=allData.filter(r=>(p==="ALL"||r.petugas===p)&&r.tgl_lunas===t);
- if(sortCol)d.sort((a,b)=>sortAsc?(a[sortCol]||"").localeCompare(b[sortCol]||"",undefined,{numeric:true}):(b[sortCol]||"").localeCompare(a[sortCol]||"",undefined,{numeric:true}));
- const h=["idpel","koked","nama","alamat","tarif","daya","rptag","rpbk","jumlah","petugas","tgl_lunas"];
- renderHead(h,true);
- tableBody.innerHTML=d.map(r=>"<tr>"+h.map(c=>`<td data-label="${c}">${r[c]||""}</td>`).join("")+"</tr>").join("");
+function render(){
+  const cols=Object.keys(data[0]||{});
+  renderTable(cols,data);
+  renderChart(data);
 }
 
-function renderHead(h,s){
- tableHead.innerHTML="<tr>"+h.map(c=>s?`<th data-col="${c}">${c}</th>`:`<th>${c}</th>`).join("")+"</tr>";
- if(s)tableHead.querySelectorAll("th").forEach(th=>th.onclick=()=>{sortAsc=sortCol===th.dataset.col?!sortAsc:true;sortCol=th.dataset.col;renderDetail(petugasAktif,tglAktif)});
+function renderTable(cols,rows){
+  const thead=document.querySelector("#table thead");
+  const tbody=document.querySelector("#table tbody");
+  thead.innerHTML="<tr>"+cols.map(c=>`<th onclick="sortBy('${c}')">${c}</th>`).join("")+"</tr>";
+  tbody.innerHTML=rows.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
 }
 
-function toggle(b,s,e){
- backBtn.classList.toggle("d-none",!b);
- searchBox.classList.toggle("d-none",!s);
- exportBtn.classList.toggle("d-none",!e);
- level==="detail"?mobileSort.classList.remove("d-none"):mobileSort.classList.add("d-none");
+function sortBy(c){
+  sortAsc = sortCol===c ? !sortAsc : true;
+  sortCol=c;
+  data.sort((a,b)=>(a[c]||"").localeCompare(b[c]||"",undefined,{numeric:true})*(sortAsc?1:-1));
+  render();
 }
 
-function goBack(){level==="detail"?renderTanggal(petugasAktif):renderPetugas()}
-function filterTable(){const q=searchBox.value.toLowerCase();document.querySelectorAll("#tableBody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")}
-function exportExcel(){saveAs(new Blob([dataTable.outerHTML],{type:"application/vnd.ms-excel"}),"rekap_tunggakan.xls")}
+function renderChart(rows){
+  const count={};
+  rows.forEach(r=>{
+    const t=r.tgl_lunas||"LAINNYA";
+    count[t]=(count[t]||0)+1;
+  });
+  if(chart) chart.destroy();
+  chart=new Chart(document.getElementById("chart"),{
+    type:"bar",
+    data:{
+      labels:Object.keys(count),
+      datasets:[{
+        label:"Jumlah",
+        data:Object.values(count),
+        backgroundColor:"#009FDA"
+      }]
+    },
+    options:{responsive:true}
+  });
+}
+
+loadCSV("lembar1");
 </script>
+
 </body>
 </html>
+
 
 
 
