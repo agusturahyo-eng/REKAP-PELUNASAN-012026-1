@@ -76,9 +76,19 @@ th,td{
 th{
   background:#222;
   color:#fff;
+}
+tr.click:hover{
+  background:#f1f1f1;
   cursor:pointer;
 }
-tr:hover{background:#f1f1f1}
+button.back{
+  margin:10px;
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  background:var(--pln);
+  color:#fff;
+}
 </style>
 </head>
 
@@ -99,6 +109,8 @@ tr:hover{background:#f1f1f1}
   <button class="toggle" onclick="toggleTheme()">🌙</button>
 </div>
 
+<button class="back" onclick="goBack()" style="display:none">⬅ Kembali</button>
+
 <div class="card">
   <table>
     <thead></thead>
@@ -113,7 +125,7 @@ const SHEETS={
  lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let data=[],sortCol="",sortAsc=true;
+let allData=[],currentLevel="petugas",currentPetugas="ALL";
 
 function toggleTheme(){
  document.body.dataset.theme =
@@ -129,25 +141,47 @@ function switchSheet(s,el){
 async function loadCSV(sheet){
  const r=await fetch(SHEETS[sheet]);
  const t=await r.text();
- data=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
- render();
+ allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
+ renderPetugas();
 }
 
-function render(){
- const cols=Object.keys(data[0]||{});
+function renderPetugas(){
+ currentLevel="petugas";
+ document.querySelector(".back").style.display="none";
+
+ const rekap={};
+ allData.forEach(r=>{
+  const p=r.petugas||"TANPA PETUGAS";
+  rekap[p]=(rekap[p]||0)+1;
+ });
+
+ const thead=document.querySelector("thead");
+ const tbody=document.querySelector("tbody");
+ thead.innerHTML="<tr><th>Petugas</th><th>Jumlah</th></tr>";
+
+ let html=`<tr class="click" onclick="renderDetail('ALL')"><td><b>ALL</b></td><td><b>${allData.length}</b></td></tr>`;
+ Object.keys(rekap).forEach(p=>{
+  html+=`<tr class="click" onclick="renderDetail('${p}')"><td>${p}</td><td>${rekap[p]}</td></tr>`;
+ });
+ tbody.innerHTML=html;
+}
+
+function renderDetail(p){
+ currentLevel="detail";
+ currentPetugas=p;
+ document.querySelector(".back").style.display="block";
+
+ const rows = p==="ALL" ? allData : allData.filter(r=>r.petugas===p);
+ const cols=Object.keys(rows[0]||{});
+
  document.querySelector("thead").innerHTML=
-  "<tr>"+cols.map(c=>`<th onclick="sortBy('${c}')">${c}</th>`).join("")+"</tr>";
+  "<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
  document.querySelector("tbody").innerHTML=
-  data.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
+  rows.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
 }
 
-function sortBy(c){
- sortAsc=sortCol===c?!sortAsc:true;
- sortCol=c;
- data.sort((a,b)=>
-  (a[c]||"").localeCompare(b[c]||"",undefined,{numeric:true})
-  *(sortAsc?1:-1));
- render();
+function goBack(){
+ renderPetugas();
 }
 
 loadCSV("lembar1");
@@ -155,6 +189,8 @@ loadCSV("lembar1");
 
 </body>
 </html>
+
+
 
 
 
