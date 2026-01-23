@@ -1,43 +1,43 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Rekap Tunggakan ULP Tulung</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>Rekap Tunggakan ULP Tulung</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-  <style>
-    body { background:#f4f6f9; }
-    .clickable { cursor:pointer; }
-    .clickable:hover { background:#eef2f7; }
-  </style>
+<style>
+  body { background:#f4f6f9; }
+  .clickable { cursor:pointer; }
+  .clickable:hover { background:#eef2f7; }
+</style>
 </head>
 
 <body>
 <div class="container my-3">
 
-  <h4 class="text-center text-primary mb-3">
-    📊 Rekap Tunggakan ULP Tulung
-  </h4>
+<h4 class="text-center text-primary mb-3">
+  📊 Rekap Tunggakan ULP Tulung
+</h4>
 
-  <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none" onclick="goBack()">⬅ Kembali</button>
+<button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none" onclick="goBack()">⬅ Kembali</button>
 
-  <div id="tableArea"></div>
+<div id="tableArea"></div>
 
 </div>
 
 <script>
 /* ================= CONFIG ================= */
 const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?output=csv";
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?output=csv";
 
 /* ================= STATE ================= */
 let allData = [];
-let currentLevel = "petugas";
 let currentPetugas = null;
 let lastViewFn = null;
+let lastTableData = [];
 
 /* ================= HELPER ================= */
 function isLunas(r) {
@@ -60,7 +60,6 @@ fetch(SHEET_URL)
 
 /* ================= VIEW ================= */
 function renderRekapPetugas() {
-  currentLevel = "petugas";
   lastViewFn = null;
   document.getElementById("backBtn").classList.add("d-none");
 
@@ -71,17 +70,17 @@ function renderRekapPetugas() {
   });
 
   let html = `
-    <table class="table table-bordered table-striped">
-      <thead class="table-dark">
-        <tr><th>Petugas</th><th>Jumlah Data</th></tr>
-      </thead><tbody>`;
+  <table class="table table-bordered table-striped">
+    <thead class="table-dark">
+      <tr><th>Petugas</th><th>Jumlah Data</th></tr>
+    </thead><tbody>`;
 
   Object.keys(rekap).forEach(p => {
     html += `
-      <tr class="clickable" onclick="renderPetugasDetail('${p}')">
-        <td>${p}</td>
-        <td>${rekap[p]}</td>
-      </tr>`;
+    <tr class="clickable" onclick="renderPetugasDetail('${p}')">
+      <td>${p}</td>
+      <td>${rekap[p]}</td>
+    </tr>`;
   });
 
   html += "</tbody></table>";
@@ -89,7 +88,6 @@ function renderRekapPetugas() {
 }
 
 function renderPetugasDetail(petugas) {
-  currentLevel = "petugasDetail";
   currentPetugas = petugas;
   lastViewFn = () => renderPetugasDetail(petugas);
   document.getElementById("backBtn").classList.remove("d-none");
@@ -100,7 +98,7 @@ function renderPetugasDetail(petugas) {
 
   let html = `<h6 class="text-primary">Petugas: ${petugas}</h6>`;
 
-  /* ===== LUNAS PER TANGGAL ===== */
+  /* === LUNAS PER TANGGAL === */
   const rekapLunas = {};
   lunas.forEach(r => {
     if (!rekapLunas[r.tgl_lunas]) rekapLunas[r.tgl_lunas] = 0;
@@ -108,143 +106,131 @@ function renderPetugasDetail(petugas) {
   });
 
   html += `
-    <h6 class="text-success mt-3">✅ Lunas per Tanggal</h6>
-    <table class="table table-sm table-bordered">
-      <thead class="table-success">
-        <tr><th>Tanggal</th><th>Jumlah</th></tr>
-      </thead><tbody>`;
+  <h6 class="text-success mt-3">✅ Lunas per Tanggal</h6>
+  <table class="table table-sm table-bordered">
+    <thead class="table-success">
+      <tr><th>Tanggal</th><th>Jumlah</th></tr>
+    </thead><tbody>`;
 
   Object.keys(rekapLunas).forEach(tgl => {
     html += `
-      <tr class="clickable" onclick="renderDetailLunas('${tgl}')">
-        <td>${tgl}</td>
-        <td>${rekapLunas[tgl]}</td>
-      </tr>`;
+    <tr class="clickable" onclick="renderDetailLunas('${tgl}')">
+      <td>${tgl}</td>
+      <td>${rekapLunas[tgl]}</td>
+    </tr>`;
   });
 
   html += "</tbody></table>";
 
-  /* ===== BELUM LUNAS ===== */
+  /* === BELUM LUNAS === */
   const totalBelum = belum.reduce((a,b)=>a+Number(b.jumlah||0),0);
 
   html += `
-    <h6 class="text-danger mt-3">❌ Belum Lunas</h6>
-    <table class="table table-sm table-bordered clickable"
-           onclick="renderDetailBelumLunas()">
-      <thead class="table-danger">
-        <tr><th>Jumlah Pelanggan</th><th>Total Rp</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>${belum.length}</td>
-          <td>${totalBelum.toLocaleString("id-ID")}</td>
-        </tr>
-      </tbody>
-    </table>`;
+  <h6 class="text-danger mt-3">❌ Belum Lunas</h6>
+  <table class="table table-sm table-bordered clickable"
+         onclick="renderDetailBelumLunas()">
+    <thead class="table-danger">
+      <tr><th>Jumlah</th><th>Total Rp</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${belum.length}</td>
+        <td>${totalBelum.toLocaleString("id-ID")}</td>
+      </tr>
+    </tbody>
+  </table>`;
 
   document.getElementById("tableArea").innerHTML = html;
 }
 
 function renderDetailLunas(tanggal) {
-  currentLevel = "detailLunas";
-  lastViewFn = () => renderDetailLunas(tanggal);
-
   const data = allData.filter(r =>
     r.petugas === currentPetugas &&
     isLunas(r) &&
     r.tgl_lunas === tanggal
   );
-
+  lastTableData = data;
+  lastViewFn = () => renderDetailLunas(tanggal);
   renderDetailTable(`Detail Lunas - ${tanggal}`, "success", data);
 }
 
 function renderDetailBelumLunas() {
-  currentLevel = "detailBelum";
-  lastViewFn = renderDetailBelumLunas;
-
   const data = allData.filter(r =>
     r.petugas === currentPetugas && !isLunas(r)
   );
-
+  lastTableData = data;
+  lastViewFn = renderDetailBelumLunas;
   renderDetailTable("Detail Belum Lunas", "danger", data);
 }
 
 function renderDetailTable(title, color, data) {
   let html = `
-    <h6 class="text-${color}">${title}</h6>
-    <div class="table-responsive">
-    <table class="table table-sm table-striped table-bordered">
-      <thead class="table-${color}">
-        <tr>
-          <th>IDPEL</th>
-          <th>Nama</th>
-          <th>Alamat</th>
-          <th>Koded</th>
-          <th>Tarif/Daya</th>
-          <th>Rp</th>
-        </tr>
-      </thead><tbody>`;
+  <h6 class="text-${color}">${title}</h6>
+  <small class="text-muted">Klik tabel untuk melihat card view</small>
+
+  <div class="table-responsive mt-2">
+  <table class="table table-sm table-striped table-bordered clickable"
+         onclick="renderCardsFromLastTable()">
+    <thead class="table-${color}">
+      <tr>
+        <th>IDPEL</th>
+        <th>Nama</th>
+        <th>Alamat</th>
+        <th>Koded</th>
+        <th>Tarif/Daya</th>
+        <th>Rp</th>
+      </tr>
+    </thead><tbody>`;
 
   data.forEach(r => {
     html += `
-      <tr class="clickable" onclick="renderDetailPelanggan('${r.idpel}')">
-        <td>${r.idpel}</td>
-        <td>${r.nama}</td>
-        <td>${r.alamat}</td>
-        <td>${r.koked}</td>
-        <td>${r.tarif} / ${r.daya}</td>
-        <td class="text-end">${Number(r.jumlah).toLocaleString("id-ID")}</td>
-      </tr>`;
+    <tr>
+      <td>${r.idpel}</td>
+      <td>${r.nama}</td>
+      <td>${r.alamat}</td>
+      <td>${r.koked}</td>
+      <td>${r.tarif} / ${r.daya}</td>
+      <td class="text-end">${Number(r.jumlah).toLocaleString("id-ID")}</td>
+    </tr>`;
   });
 
   html += "</tbody></table></div>";
   document.getElementById("tableArea").innerHTML = html;
 }
 
-/* ===== CARD VIEW PELANGGAN ===== */
-function renderDetailPelanggan(idpel) {
-  const r = allData.find(x => x.idpel === idpel);
-  if (!r) return;
+function renderCardsFromLastTable() {
+  let html = `<h6 class="mt-3 text-primary">📋 Card View Detail</h6>`;
 
-  currentLevel = "card";
+  lastTableData.forEach(r => {
+    const badge = isLunas(r)
+      ? `<span class="badge bg-success">LUNAS</span>`
+      : `<span class="badge bg-danger">BELUM</span>`;
 
-  const status = isLunas(r)
-    ? `<span class="badge bg-success">LUNAS</span>`
-    : `<span class="badge bg-danger">BELUM LUNAS</span>`;
-
-  let html = `
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold">
-        Detail Pelanggan
+    html += `
+    <div class="card mb-2 shadow-sm">
+      <div class="card-body p-2">
+        <b>${r.nama}</b> ${badge}<br>
+        IDPEL: ${r.idpel}<br>
+        Alamat: ${r.alamat}<br>
+        Koded: ${r.koked}<br>
+        Tarif/Daya: ${r.tarif} / ${r.daya}<br>
+        Rp ${Number(r.jumlah).toLocaleString("id-ID")}
       </div>
-      <div class="card-body">
-        <h5>${r.nama}</h5>
-        <p class="mb-1"><b>IDPEL:</b> ${r.idpel}</p>
-        <p class="mb-1"><b>Alamat:</b> ${r.alamat}</p>
-        <p class="mb-1"><b>Koded:</b> ${r.koked}</p>
-        <p class="mb-1"><b>Tarif / Daya:</b> ${r.tarif} / ${r.daya}</p>
-        <p class="mb-1"><b>Petugas:</b> ${r.petugas}</p>
-        <p class="mb-1"><b>Tgl Lunas:</b> ${r.tgl_lunas || "-"}</p>
-        <p class="mb-2"><b>Jumlah:</b> Rp ${Number(r.jumlah).toLocaleString("id-ID")}</p>
-        ${status}
-      </div>
-    </div>
-  `;
+    </div>`;
+  });
 
-  document.getElementById("tableArea").innerHTML = html;
+  document.getElementById("tableArea").innerHTML += html;
 }
 
-/* ================= NAV ================= */
 function goBack() {
-  if (lastViewFn) {
-    lastViewFn();
-  } else {
-    renderRekapPetugas();
-  }
+  if (lastViewFn) lastViewFn();
+  else renderRekapPetugas();
 }
 </script>
 </body>
 </html>
+
+
 
 
 
