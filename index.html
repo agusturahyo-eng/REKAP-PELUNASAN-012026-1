@@ -19,6 +19,19 @@ tr:hover{background:#eef3ff}
 <body>
 <div class="container my-3">
 
+<!-- TAB PER LEMBAR -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a>
+  </li>
+</ul>
+
 <h4 class="text-center text-primary mb-3">
 ⚡ Rekap Tunggakan ULP Tulung
 </h4>
@@ -30,23 +43,41 @@ tr:hover{background:#eef3ff}
 
 <script>
 /* ================= CONFIG ================= */
-const SHEET_URL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?output=csv";
+const SHEETS = {
+  lembar1:{
+    url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"
+  },
+  lembar2:{
+    url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"
+  },
+  lembar3:{
+    url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+  }
+};
 
 /* ================= STATE ================= */
 let allData=[], currentPetugas=null, currentDetail=[], currentTitle="";
-let history=[];
+let history=[], currentSheet="lembar1";
 
 /* ================= UTIL ================= */
 const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="" && r.tgl_lunas!="-";
 
 /* ================= LOAD ================= */
-fetch(SHEET_URL)
-.then(r=>r.text())
-.then(csv=>{
-  allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
-  renderPetugas();
-});
+function loadSheet(key){
+  currentSheet=key;
+  history=[];
+  backBtn.classList.add("d-none");
+
+  document.querySelectorAll(".nav-link").forEach(t=>t.classList.remove("active"));
+  document.getElementById("tab-"+key).classList.add("active");
+
+  fetch(SHEETS[key].url)
+    .then(r=>r.text())
+    .then(csv=>{
+      allData = Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
+      renderPetugas();
+    });
+}
 
 /* ================= HISTORY ================= */
 function pushView(fn){
@@ -63,7 +94,7 @@ backBtn.onclick=()=>{
   }
 };
 
-/* ================= VIEW ================= */
+/* ================= REKAP PETUGAS ================= */
 function renderPetugas(){
   history=[];
   backBtn.classList.add("d-none");
@@ -73,21 +104,17 @@ function renderPetugas(){
 
   let h=`<table class="table table-bordered">
   <thead class="table-dark">
-    <tr><th>Petugas</th><th>Jumlah</th></tr>
+  <tr><th>Petugas</th><th>Jumlah</th></tr>
   </thead><tbody>`;
 
-  /* ===== REKAP GLOBAL (PALING ATAS) ===== */
   h+=`<tr class="table-primary clickable" onclick="openGlobal()">
   <td><b>SEMUA PETUGAS</b></td>
   <td><b>${allData.length}</b></td>
   </tr>`;
 
-  /* ===== PER PETUGAS ===== */
   Object.keys(map).forEach(p=>{
     h+=`<tr class="clickable" onclick="openPetugas('${p}')">
-    <td>${p}</td>
-    <td>${map[p]}</td>
-    </tr>`;
+    <td>${p}</td><td>${map[p]}</td></tr>`;
   });
 
   h+=`</tbody></table>`;
@@ -97,7 +124,7 @@ function renderPetugas(){
 /* ================= GLOBAL ================= */
 function openGlobal(){
   pushView(renderPetugas);
-  currentPetugas="SEMUA PETUGAS";
+  currentPetugas="SEMUA";
 
   const lunas=allData.filter(isLunas);
   const belum=allData.filter(r=>!isLunas(r));
@@ -106,7 +133,6 @@ function openGlobal(){
   lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
   let h=`<h6 class="text-primary">Rekap Semua Petugas</h6>
-
   <h6 class="text-success mt-3">Lunas per Tanggal</h6>
   <table class="table table-sm table-bordered">
   <thead class="table-success">
@@ -139,7 +165,6 @@ function openPetugas(p){
   lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
   let h=`<h6 class="text-primary">Petugas: ${p}</h6>
-
   <h6 class="text-success mt-3">Lunas per Tanggal</h6>
   <table class="table table-sm table-bordered">
   <thead class="table-success">
@@ -162,19 +187,16 @@ function openPetugas(p){
 /* ================= DETAIL ================= */
 function detailLunas(t){
   pushView(()=>openPetugas(currentPetugas));
-  currentTitle=`Lunas_${t}_${currentPetugas}`;
+  currentTitle=`Lunas_${t}`;
   currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r) && r.tgl_lunas===t);
   renderDetailTable(`Detail Lunas ${t}`,"success");
 }
-
 function detailBelum(){
   pushView(()=>openPetugas(currentPetugas));
-  currentTitle=`Belum_Lunas_${currentPetugas}`;
+  currentTitle="Belum_Lunas";
   currentDetail=allData.filter(r=>r.petugas===currentPetugas && !isLunas(r));
   renderDetailTable("Detail Belum Lunas","secondary");
 }
-
-/* ===== GLOBAL DETAIL ===== */
 function detailGlobalLunas(t){
   pushView(openGlobal);
   currentTitle=`Global_Lunas_${t}`;
@@ -246,10 +268,10 @@ function exportExcel(){
   table+=`</table>`;
   saveAs(new Blob([table],{type:"application/vnd.ms-excel"}),`${currentTitle}.xls`);
 }
+
+/* LOAD AWAL */
+loadSheet("lembar1");
 </script>
 </body>
 </html>
-
-
-
 
