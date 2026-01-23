@@ -59,6 +59,214 @@ button.back{
   background:var(--card);
   margin:10px;
   border-radius:12px;
+  padding:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.card.click{cursor:pointer}
+.card.click:hover{background:#f1f1f1}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  font-size:.85rem;
+  margin-top:4px;
+}
+.label{color:#666}
+
+.badge{
+  padding:4px 10px;
+  border-radius:8px;
+  font-size:.75rem;
+  display:inline-block;
+  margin-top:6px;
+}
+.lunas{background:#28a745;color:#fff}
+.belum{background:#dc3545;color:#fff}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAA..." alt="PLN">
+  <div>
+    <h1>Rekap Tunggakan</h1>
+    <small>ULP Tulung</small>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchSheet('lembar1',this)">Lembar 1</div>
+  <div class="tab" onclick="switchSheet('lembar2',this)">Lembar 2</div>
+  <div class="tab" onclick="switchSheet('lembar3',this)">Lembar 3</div>
+</div>
+
+<button class="back" onclick="goBack()" style="display:none">⬅ Kembali</button>
+
+<div id="content"></div>
+
+<script>
+const SHEETS={
+ lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+ lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+ lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+};
+
+let allData=[],level="petugas",selectedPetugas=null,selectedTanggal=null;
+
+function switchSheet(s,el){
+ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+ el.classList.add("active");
+ loadCSV(s);
+}
+
+async function loadCSV(sheet){
+ const r=await fetch(SHEETS[sheet]);
+ const t=await r.text();
+ allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
+ renderPetugas();
+}
+
+function renderPetugas(){
+ level="petugas";
+ selectedPetugas=null;
+ document.querySelector(".back").style.display="none";
+ const c=document.getElementById("content");
+ c.innerHTML="";
+
+ const rekap={};
+ allData.forEach(r=>{
+  const p=r.petugas||"TANPA PETUGAS";
+  rekap[p]=(rekap[p]||0)+1;
+ });
+
+ Object.keys(rekap).forEach(p=>{
+  c.innerHTML+=`
+   <div class="card click" onclick="renderTanggal('${p}')">
+     <b>${p}</b>
+     <div class="row"><span class="label">Jumlah</span><span>${rekap[p]}</span></div>
+   </div>`;
+ });
+}
+
+function renderTanggal(p){
+ level="tanggal";
+ selectedPetugas=p;
+ document.querySelector(".back").style.display="block";
+ const c=document.getElementById("content");
+ c.innerHTML="";
+
+ const rows=allData.filter(r=>r.petugas===p);
+ const rekap={};
+ rows.forEach(r=>{
+  const t=r.tgl_lunas||"BELUM";
+  rekap[t]=(rekap[t]||0)+1;
+ });
+
+ Object.keys(rekap).forEach(t=>{
+  c.innerHTML+=`
+   <div class="card click" onclick="renderDetail('${t}')">
+     <b>${t}</b>
+     <div class="row"><span class="label">Jumlah</span><span>${rekap[t]}</span></div>
+   </div>`;
+ });
+}
+
+function renderDetail(tgl){
+ level="detail";
+ selectedTanggal=tgl;
+ const c=document.getElementById("content");
+ c.innerHTML="";
+
+ const rows=allData.filter(r=>{
+  return r.petugas===selectedPetugas &&
+   ((tgl==="BELUM" && !r.tgl_lunas) || r.tgl_lunas===tgl);
+ });
+
+ rows.forEach(r=>{
+  const status = r.tgl_lunas ? "lunas" : "belum";
+  c.innerHTML+=`
+   <div class="card">
+     <b>${r.nama || "-"}</b>
+
+     <div class="row"><span class="label">IDPEL</span><span>${r.idpel||"-"}</span></div>
+     <div class="row"><span class="label">KOKED</span><span>${r.koked||"-"}</span></div>
+     <div class="row"><span class="label">Tarif / Daya</span><span>${r.tarif||"-"} / ${r.daya||"-"}</span></div>
+     <div class="row"><span class="label">Alamat</span><span>${r.alamat||"-"}</span></div>
+     <div class="row"><span class="label">Jumlah</span><span>${r.jumlah||"-"}</span></div>
+
+     <span class="badge ${status}">
+       ${status.toUpperCase()}
+     </span>
+   </div>`;
+ });
+}
+
+function goBack(){
+ if(level==="detail") renderTanggal(selectedPetugas);
+ else renderPetugas();
+}
+
+loadCSV("lembar1");
+</script>
+
+</body>
+</html>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+:root{
+  --pln:#009FDA;
+  --bg:#f6f8fa;
+  --text:#111;
+  --card:#fff;
+}
+body{
+  margin:0;
+  font-family:system-ui;
+  background:var(--bg);
+  color:var(--text);
+}
+header{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-bottom:3px solid var(--pln);
+}
+header img{height:36px}
+h1{font-size:1.2rem;margin:0;color:var(--pln)}
+small{color:#666}
+
+.tabs{
+  display:flex;
+  gap:6px;
+  padding:10px;
+}
+.tab{
+  padding:6px 12px;
+  border-radius:8px;
+  border:1px solid var(--pln);
+  background:#fff;
+  color:var(--pln);
+  cursor:pointer;
+}
+.tab.active{background:var(--pln);color:#fff}
+
+button.back{
+  margin:0 10px;
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  background:var(--pln);
+  color:#fff;
+}
+
+.card{
+  background:var(--card);
+  margin:10px;
+  border-radius:12px;
   padding:10px;
   box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
@@ -196,6 +404,7 @@ loadCSV("lembar1");
 
 </body>
 </html>
+
 
 
 
