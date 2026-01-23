@@ -1,407 +1,235 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rekap Tunggakan ULP Tulung</title>
+  <meta charset="UTF-8">
+  <title>Rekap Tunggakan ULP Tulung</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-<style>
-:root{
-  --pln:#009FDA;
-  --bg:#f6f8fa;
-  --text:#111;
-  --card:#fff;
-}
-body{
-  margin:0;
-  font-family:system-ui;
-  background:var(--bg);
-  color:var(--text);
-}
-header{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  padding:12px;
-  border-bottom:3px solid var(--pln);
-}
-header img{height:36px}
-h1{font-size:1.2rem;margin:0;color:var(--pln)}
-small{color:#666}
-
-.tabs{
-  display:flex;
-  gap:6px;
-  padding:10px;
-}
-.tab{
-  padding:6px 12px;
-  border-radius:8px;
-  border:1px solid var(--pln);
-  background:#fff;
-  color:var(--pln);
-  cursor:pointer;
-}
-.tab.active{background:var(--pln);color:#fff}
-
-button.back{
-  margin:0 10px;
-  padding:6px 10px;
-  border:none;
-  border-radius:6px;
-  background:var(--pln);
-  color:#fff;
-}
-
-.card{
-  background:var(--card);
-  margin:10px;
-  border-radius:12px;
-  padding:12px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-.card.click{cursor:pointer}
-.card.click:hover{background:#f1f1f1}
-
-.row{
-  display:flex;
-  justify-content:space-between;
-  font-size:.85rem;
-  margin-top:4px;
-}
-.label{color:#666}
-
-.badge{
-  padding:4px 10px;
-  border-radius:8px;
-  font-size:.75rem;
-  display:inline-block;
-  margin-top:6px;
-}
-.lunas{background:#28a745;color:#fff}
-.belum{background:#dc3545;color:#fff}
-</style>
+  <style>
+    body { background:#f5f7fa; }
+    .clickable { cursor:pointer; }
+    .clickable:hover { background:#eef2f7; }
+  </style>
 </head>
 
 <body>
+<div class="container my-3">
 
-<header>
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAA..." alt="PLN">
-  <div>
-    <h1>Rekap Tunggakan</h1>
-    <small>ULP Tulung</small>
-  </div>
-</header>
+  <h4 class="text-center text-primary mb-3">
+    📊 Rekap Tunggakan ULP Tulung
+  </h4>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchSheet('lembar1',this)">Lembar 1</div>
-  <div class="tab" onclick="switchSheet('lembar2',this)">Lembar 2</div>
-  <div class="tab" onclick="switchSheet('lembar3',this)">Lembar 3</div>
+  <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none" onclick="goBack()">⬅ Kembali</button>
+
+  <div id="tableArea"></div>
+
 </div>
 
-<button class="back" onclick="goBack()" style="display:none">⬅ Kembali</button>
-
-<div id="content"></div>
-
 <script>
-const SHEETS={
- lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
- lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
- lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
-};
+/* ================= CONFIG ================= */
+const SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?output=csv";
 
-let allData=[],level="petugas",selectedPetugas=null,selectedTanggal=null;
+/* ================= STATE ================= */
+let allData = [];
+let currentLevel = "petugas";
+let currentPetugas = null;
 
-function switchSheet(s,el){
- document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
- el.classList.add("active");
- loadCSV(s);
+/* ================= HELPER ================= */
+function isLunas(r) {
+  return (
+    r.tgl_lunas &&
+    r.tgl_lunas.toString().trim() !== "" &&
+    r.tgl_lunas.toString().toUpperCase() !== "BELUM" &&
+    r.tgl_lunas !== "-"
+  );
 }
 
-async function loadCSV(sheet){
- const r=await fetch(SHEETS[sheet]);
- const t=await r.text();
- allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
- renderPetugas();
+/* ================= LOAD ================= */
+fetch(SHEET_URL)
+  .then(res => res.text())
+  .then(csv => {
+    const parsed = Papa.parse(csv, { header:true, skipEmptyLines:true });
+    allData = parsed.data;
+    renderRekapPetugas();
+  });
+
+/* ================= VIEW ================= */
+function renderRekapPetugas() {
+  currentLevel = "petugas";
+  document.getElementById("backBtn").classList.add("d-none");
+
+  const rekap = {};
+  allData.forEach(r => {
+    if (!rekap[r.petugas]) rekap[r.petugas] = 0;
+    rekap[r.petugas]++;
+  });
+
+  let html = `
+    <table class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr><th>Petugas</th><th>Jumlah Data</th></tr>
+      </thead><tbody>`;
+
+  Object.keys(rekap).forEach(p => {
+    html += `
+      <tr class="clickable" onclick="renderPetugasDetail('${p}')">
+        <td>${p}</td>
+        <td>${rekap[p]}</td>
+      </tr>`;
+  });
+
+  html += "</tbody></table>";
+  document.getElementById("tableArea").innerHTML = html;
 }
 
-function renderPetugas(){
- level="petugas";
- selectedPetugas=null;
- document.querySelector(".back").style.display="none";
- const c=document.getElementById("content");
- c.innerHTML="";
+function renderPetugasDetail(petugas) {
+  currentLevel = "detailPetugas";
+  currentPetugas = petugas;
+  document.getElementById("backBtn").classList.remove("d-none");
 
- const rekap={};
- allData.forEach(r=>{
-  const p=r.petugas||"TANPA PETUGAS";
-  rekap[p]=(rekap[p]||0)+1;
- });
+  const dataPetugas = allData.filter(r => r.petugas === petugas);
+  const lunas = dataPetugas.filter(isLunas);
+  const belum = dataPetugas.filter(r => !isLunas(r));
 
- Object.keys(rekap).forEach(p=>{
-  c.innerHTML+=`
-   <div class="card click" onclick="renderTanggal('${p}')">
-     <b>${p}</b>
-     <div class="row"><span class="label">Jumlah</span><span>${rekap[p]}</span></div>
-   </div>`;
- });
+  let html = `<h6 class="text-primary">Petugas: ${petugas}</h6>`;
+
+  /* ===== LUNAS PER TANGGAL ===== */
+  const rekapLunas = {};
+  lunas.forEach(r => {
+    if (!rekapLunas[r.tgl_lunas]) rekapLunas[r.tgl_lunas] = 0;
+    rekapLunas[r.tgl_lunas]++;
+  });
+
+  html += `
+    <h6 class="text-success mt-3">✅ Lunas per Tanggal</h6>
+    <table class="table table-sm table-bordered">
+      <thead class="table-success">
+        <tr><th>Tanggal</th><th>Jumlah</th></tr>
+      </thead><tbody>`;
+
+  Object.keys(rekapLunas).forEach(tgl => {
+    html += `
+      <tr class="clickable" onclick="renderDetailLunas('${tgl}')">
+        <td>${tgl}</td>
+        <td>${rekapLunas[tgl]}</td>
+      </tr>`;
+  });
+
+  html += "</tbody></table>";
+
+  /* ===== BELUM LUNAS ===== */
+  const totalBelum = belum.reduce((a,b)=>a+Number(b.jumlah||0),0);
+
+  html += `
+    <h6 class="text-danger mt-3">❌ Belum Lunas</h6>
+    <table class="table table-sm table-bordered clickable"
+           onclick="renderDetailBelumLunas()">
+      <thead class="table-danger">
+        <tr><th>Jumlah Pelanggan</th><th>Total Rp</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>${belum.length}</td>
+          <td>${totalBelum.toLocaleString("id-ID")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  document.getElementById("tableArea").innerHTML = html;
 }
 
-function renderTanggal(p){
- level="tanggal";
- selectedPetugas=p;
- document.querySelector(".back").style.display="block";
- const c=document.getElementById("content");
- c.innerHTML="";
+function renderDetailLunas(tanggal) {
+  currentLevel = "detailLunas";
 
- const rows=allData.filter(r=>r.petugas===p);
- const rekap={};
- rows.forEach(r=>{
-  const t=r.tgl_lunas||"BELUM";
-  rekap[t]=(rekap[t]||0)+1;
- });
+  const data = allData.filter(r =>
+    r.petugas === currentPetugas &&
+    isLunas(r) &&
+    r.tgl_lunas === tanggal
+  );
 
- Object.keys(rekap).forEach(t=>{
-  c.innerHTML+=`
-   <div class="card click" onclick="renderDetail('${t}')">
-     <b>${t}</b>
-     <div class="row"><span class="label">Jumlah</span><span>${rekap[t]}</span></div>
-   </div>`;
- });
+  let html = `
+    <h6 class="text-success">Detail Lunas - ${tanggal}</h6>
+    <div class="table-responsive">
+    <table class="table table-sm table-striped table-bordered">
+      <thead class="table-success">
+        <tr>
+          <th>IDPEL</th>
+          <th>Nama</th>
+          <th>Alamat</th>
+          <th>Koded</th>
+          <th>Tarif/Daya</th>
+          <th>Rp</th>
+        </tr>
+      </thead><tbody>`;
+
+  data.forEach(r => {
+    html += `
+      <tr>
+        <td>${r.idpel}</td>
+        <td>${r.nama}</td>
+        <td>${r.alamat}</td>
+        <td>${r.koked}</td>
+        <td>${r.tarif} / ${r.daya}</td>
+        <td class="text-end">${Number(r.jumlah).toLocaleString("id-ID")}</td>
+      </tr>`;
+  });
+
+  html += "</tbody></table></div>";
+  document.getElementById("tableArea").innerHTML = html;
 }
 
-function renderDetail(tgl){
- level="detail";
- selectedTanggal=tgl;
- const c=document.getElementById("content");
- c.innerHTML="";
+function renderDetailBelumLunas() {
+  currentLevel = "detailBelum";
 
- const rows=allData.filter(r=>{
-  return r.petugas===selectedPetugas &&
-   ((tgl==="BELUM" && !r.tgl_lunas) || r.tgl_lunas===tgl);
- });
+  const data = allData.filter(r =>
+    r.petugas === currentPetugas && !isLunas(r)
+  );
 
- rows.forEach(r=>{
-  const status = r.tgl_lunas ? "lunas" : "belum";
-  c.innerHTML+=`
-   <div class="card">
-     <b>${r.nama || "-"}</b>
+  let html = `
+    <h6 class="text-danger">Detail Belum Lunas</h6>
+    <div class="table-responsive">
+    <table class="table table-sm table-striped table-bordered">
+      <thead class="table-danger">
+        <tr>
+          <th>IDPEL</th>
+          <th>Nama</th>
+          <th>Alamat</th>
+          <th>Koded</th>
+          <th>Tarif/Daya</th>
+          <th>Rp</th>
+        </tr>
+      </thead><tbody>`;
 
-     <div class="row"><span class="label">IDPEL</span><span>${r.idpel||"-"}</span></div>
-     <div class="row"><span class="label">KOKED</span><span>${r.koked||"-"}</span></div>
-     <div class="row"><span class="label">Tarif / Daya</span><span>${r.tarif||"-"} / ${r.daya||"-"}</span></div>
-     <div class="row"><span class="label">Alamat</span><span>${r.alamat||"-"}</span></div>
-     <div class="row"><span class="label">Jumlah</span><span>${r.jumlah||"-"}</span></div>
+  data.forEach(r => {
+    html += `
+      <tr>
+        <td>${r.idpel}</td>
+        <td>${r.nama}</td>
+        <td>${r.alamat}</td>
+        <td>${r.koked}</td>
+        <td>${r.tarif} / ${r.daya}</td>
+        <td class="text-end">${Number(r.jumlah).toLocaleString("id-ID")}</td>
+      </tr>`;
+  });
 
-     <span class="badge ${status}">
-       ${status.toUpperCase()}
-     </span>
-   </div>`;
- });
+  html += "</tbody></table></div>";
+  document.getElementById("tableArea").innerHTML = html;
 }
 
-function goBack(){
- if(level==="detail") renderTanggal(selectedPetugas);
- else renderPetugas();
+function goBack() {
+  if (currentLevel === "detailLunas" || currentLevel === "detailBelum") {
+    renderPetugasDetail(currentPetugas);
+  } else {
+    renderRekapPetugas();
+  }
 }
-
-loadCSV("lembar1");
 </script>
-
-</body>
-</html>
-
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-<style>
-:root{
-  --pln:#009FDA;
-  --bg:#f6f8fa;
-  --text:#111;
-  --card:#fff;
-}
-body{
-  margin:0;
-  font-family:system-ui;
-  background:var(--bg);
-  color:var(--text);
-}
-header{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  padding:12px;
-  border-bottom:3px solid var(--pln);
-}
-header img{height:36px}
-h1{font-size:1.2rem;margin:0;color:var(--pln)}
-small{color:#666}
-
-.tabs{
-  display:flex;
-  gap:6px;
-  padding:10px;
-}
-.tab{
-  padding:6px 12px;
-  border-radius:8px;
-  border:1px solid var(--pln);
-  background:#fff;
-  color:var(--pln);
-  cursor:pointer;
-}
-.tab.active{background:var(--pln);color:#fff}
-
-button.back{
-  margin:0 10px;
-  padding:6px 10px;
-  border:none;
-  border-radius:6px;
-  background:var(--pln);
-  color:#fff;
-}
-
-.card{
-  background:var(--card);
-  margin:10px;
-  border-radius:12px;
-  padding:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-.card.click{cursor:pointer}
-.card.click:hover{background:#f1f1f1}
-
-.badge{
-  padding:3px 8px;
-  border-radius:6px;
-  font-size:.75rem;
-}
-.lunas{background:#28a745;color:#fff}
-.belum{background:#dc3545;color:#fff}
-</style>
-</head>
-
-<body>
-
-<header>
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAA..." alt="PLN">
-  <div>
-    <h1>Rekap Tunggakan</h1>
-    <small>ULP Tulung</small>
-  </div>
-</header>
-
-<div class="tabs">
-  <div class="tab active" onclick="switchSheet('lembar1',this)">Lembar 1</div>
-  <div class="tab" onclick="switchSheet('lembar2',this)">Lembar 2</div>
-  <div class="tab" onclick="switchSheet('lembar3',this)">Lembar 3</div>
-</div>
-
-<button class="back" onclick="goBack()" style="display:none">⬅ Kembali</button>
-
-<div id="content"></div>
-
-<script>
-const SHEETS={
- lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
- lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
- lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
-};
-
-let allData=[],level="petugas",selectedPetugas=null,selectedTanggal=null;
-
-function switchSheet(s,el){
- document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
- el.classList.add("active");
- loadCSV(s);
-}
-
-async function loadCSV(sheet){
- const r=await fetch(SHEETS[sheet]);
- const t=await r.text();
- allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
- renderPetugas();
-}
-
-function renderPetugas(){
- level="petugas";
- selectedPetugas=null;
- document.querySelector(".back").style.display="none";
- const c=document.getElementById("content");
- c.innerHTML="";
-
- const rekap={};
- allData.forEach(r=>{
-  const p=r.petugas||"TANPA PETUGAS";
-  rekap[p]=(rekap[p]||0)+1;
- });
-
- Object.keys(rekap).forEach(p=>{
-  c.innerHTML+=`
-   <div class="card click" onclick="renderTanggal('${p}')">
-     <b>${p}</b><br>Jumlah: ${rekap[p]}
-   </div>`;
- });
-}
-
-function renderTanggal(p){
- level="tanggal";
- selectedPetugas=p;
- document.querySelector(".back").style.display="block";
- const c=document.getElementById("content");
- c.innerHTML="";
-
- const rows=allData.filter(r=>r.petugas===p);
- const rekap={};
- rows.forEach(r=>{
-  const t=r.tgl_lunas||"BELUM";
-  rekap[t]=(rekap[t]||0)+1;
- });
-
- Object.keys(rekap).forEach(t=>{
-  c.innerHTML+=`
-   <div class="card click" onclick="renderDetail('${t}')">
-     <b>${t}</b><br>Jumlah: ${rekap[t]}
-   </div>`;
- });
-}
-
-function renderDetail(tgl){
- level="detail";
- selectedTanggal=tgl;
- const c=document.getElementById("content");
- c.innerHTML="";
-
- const rows=allData.filter(r=>{
-  return r.petugas===selectedPetugas &&
-   ((tgl==="BELUM" && !r.tgl_lunas) || r.tgl_lunas===tgl);
- });
-
- rows.forEach(r=>{
-  const status = r.tgl_lunas ? "lunas" : "belum";
-  c.innerHTML+=`
-   <div class="card">
-     <b>${r.nama}</b><br>
-     ID: ${r.idpel}<br>
-     Alamat: ${r.alamat}<br>
-     Jumlah: ${r.jumlah}<br>
-     <span class="badge ${status}">
-       ${status.toUpperCase()}
-     </span>
-   </div>`;
- });
-}
-
-function goBack(){
- if(level==="detail") renderTanggal(selectedPetugas);
- else renderPetugas();
-}
-
-loadCSV("lembar1");
-</script>
-
 </body>
 </html>
 
