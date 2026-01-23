@@ -9,8 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
-body { background:#f4f6f9; }
-.clickable { cursor:pointer; }
+body{background:#f4f6f9}
+.clickable{cursor:pointer}
+tr:hover{background:#eef3ff}
 </style>
 </head>
 
@@ -18,12 +19,12 @@ body { background:#f4f6f9; }
 <div class="container my-3">
 
 <h4 class="text-center text-primary mb-3">
-📊 Rekap Tunggakan ULP Tulung
+⚡ Rekap Tunggakan ULP Tulung
 </h4>
 
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none" onclick="goBack()">⬅ Kembali</button>
 
-<div id="tableArea"></div>
+<div id="view"></div>
 
 </div>
 
@@ -33,137 +34,130 @@ const SHEET_URL =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?output=csv";
 
 /* ================= STATE ================= */
-let allData = [];
-let currentPetugas = null;
-let lastViewFn = null;
-let lastTableData = [];
+let allData=[], currentPetugas=null, lastView=null, currentDetail=[];
 
 /* ================= UTIL ================= */
-function isLunas(r){
-  return r.tgl_lunas && r.tgl_lunas.trim() !== "" && r.tgl_lunas !== "-";
-}
+const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!="" && r.tgl_lunas!="-";
 
 /* ================= LOAD ================= */
 fetch(SHEET_URL)
 .then(r=>r.text())
 .then(csv=>{
-  allData = Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
-  renderRekapPetugas();
+  allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
+  renderPetugas();
 });
 
 /* ================= VIEW ================= */
-function renderRekapPetugas(){
-  lastViewFn=null;
+function renderPetugas(){
+  lastView=null;
   backBtn.classList.add("d-none");
 
   const map={};
-  allData.forEach(r=>{
-    map[r.petugas]=(map[r.petugas]||0)+1;
-  });
+  allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
 
-  let html=`<table class="table table-bordered">
+  let h=`<table class="table table-bordered">
   <thead class="table-dark"><tr><th>Petugas</th><th>Jumlah</th></tr></thead><tbody>`;
   Object.keys(map).forEach(p=>{
-    html+=`<tr class="clickable" onclick="renderPetugas('${p}')">
+    h+=`<tr class="clickable" onclick="openPetugas('${p}')">
     <td>${p}</td><td>${map[p]}</td></tr>`;
   });
-  html+="</tbody></table>";
-  tableArea.innerHTML=html;
+  h+=`</tbody></table>`;
+  view.innerHTML=h;
 }
 
-function renderPetugas(p){
+function openPetugas(p){
   currentPetugas=p;
-  lastViewFn=()=>renderPetugas(p);
+  lastView=()=>openPetugas(p);
   backBtn.classList.remove("d-none");
 
   const data=allData.filter(r=>r.petugas===p);
   const lunas=data.filter(isLunas);
   const belum=data.filter(r=>!isLunas(r));
 
-  let html=`<h6 class="text-primary">Petugas: ${p}</h6>`;
-
-  /* LUNAS */
   const byDate={};
-  lunas.forEach(r=>{
-    byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1;
-  });
+  lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
-  html+=`<h6 class="text-success mt-3">Lunas per Tanggal</h6>
+  let h=`<h6 class="text-primary">Petugas: ${p}</h6>
+
+  <h6 class="text-success mt-3">Lunas per Tanggal</h6>
   <table class="table table-sm table-bordered">
   <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
   Object.keys(byDate).forEach(t=>{
-    html+=`<tr class="clickable" onclick="detailLunas('${t}')">
+    h+=`<tr class="clickable" onclick="detailLunas('${t}')">
     <td>${t}</td><td>${byDate[t]}</td></tr>`;
   });
-  html+="</tbody></table>";
+  h+=`</tbody></table>
 
-  /* BELUM */
-  html+=`<h6 class="text-danger mt-3">Belum Lunas</h6>
-  <button class="btn btn-danger btn-sm" onclick="detailBelum()">Lihat Detail</button>`;
+  <h6 class="text-danger mt-3">Belum Lunas</h6>
+  <button class="btn btn-danger btn-sm" onclick="detailBelum()">
+  Lihat Detail (${belum.length})
+  </button>`;
 
-  tableArea.innerHTML=html;
+  view.innerHTML=h;
 }
 
-function detailLunas(tgl){
-  lastTableData=allData.filter(r=>r.petugas===currentPetugas && isLunas(r) && r.tgl_lunas===tgl);
-  lastViewFn=()=>detailLunas(tgl);
-  renderDetailTable(`Detail Lunas ${tgl}`,"success");
+function detailLunas(t){
+  currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r) && r.tgl_lunas===t);
+  lastView=()=>detailLunas(t);
+  renderDetailTable(`Detail Lunas ${t}`,"success");
 }
 
 function detailBelum(){
-  lastTableData=allData.filter(r=>r.petugas===currentPetugas && !isLunas(r));
-  lastViewFn=detailBelum;
+  currentDetail=allData.filter(r=>r.petugas===currentPetugas && !isLunas(r));
+  lastView=detailBelum;
   renderDetailTable("Detail Belum Lunas","danger");
 }
 
 function renderDetailTable(title,color){
-  let html=`<h6 class="text-${color}">${title}</h6>
+  let h=`<h6 class="text-${color}">${title}</h6>
   <div class="table-responsive">
   <table class="table table-sm table-bordered">
   <thead class="table-${color}">
-  <tr><th>IDPEL</th><th>Nama</th><th>Alamat</th><th>Koded</th><th>Tarif/Daya</th><th>Rp</th></tr>
-  </thead><tbody>`;
-  lastTableData.forEach(r=>{
-    html+=`<tr>
-    <td>${r.idpel}</td><td>${r.nama}</td><td>${r.alamat}</td>
-    <td>${r.koked}</td><td>${r.tarif}/${r.daya}</td>
+  <tr>
+  <th>IDPEL</th><th>Nama</th><th>Alamat</th>
+  <th>Koded</th><th>Tarif/Daya</th><th>Rp</th>
+  </tr></thead><tbody>`;
+
+  currentDetail.forEach((r,i)=>{
+    h+=`<tr class="clickable" onclick="showCards()">
+    <td>${r.idpel}</td>
+    <td>${r.nama}</td>
+    <td>${r.alamat}</td>
+    <td>${r.koked}</td>
+    <td>${r.tarif}/${r.daya}</td>
     <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td>
     </tr>`;
   });
-  html+=`</tbody></table></div>
 
-  <button class="btn btn-primary w-100 mt-2" onclick="showCards()">
-  📋 Tampilkan Card View
-  </button>`;
+  h+=`</tbody></table></div>
+  <small class="text-muted">Klik salah satu baris untuk melihat Card View</small>`;
 
-  tableArea.innerHTML=html;
+  view.innerHTML=h;
 }
 
 function showCards(){
-  let html=`<h6 class="mt-3">Card View</h6>`;
-  lastTableData.forEach(r=>{
-    html+=`<div class="card mb-2">
+  let h=`<h6 class="mt-3">Card View</h6>`;
+  currentDetail.forEach(r=>{
+    h+=`<div class="card mb-2">
     <div class="card-body p-2">
     <b>${r.nama}</b><br>
     IDPEL: ${r.idpel}<br>
     ${r.alamat}<br>
     Koded: ${r.koked}<br>
     Tarif/Daya: ${r.tarif}/${r.daya}<br>
-    Rp ${(+r.jumlah).toLocaleString("id-ID")}
+    <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b>
     </div></div>`;
   });
-  tableArea.innerHTML+=html;
+  view.innerHTML+=h;
 }
 
 function goBack(){
-  if(lastViewFn) lastViewFn();
-  else renderRekapPetugas();
+  if(lastView) lastView();
+  else renderPetugas();
 }
 </script>
 </body>
 </html>
-
-
 
 
 
