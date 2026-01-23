@@ -38,7 +38,7 @@ let allData=[], currentPetugas=null, currentDetail=[];
 let history=[];
 
 /* ================= UTIL ================= */
-const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!="" && r.tgl_lunas!="-";
+const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="" && r.tgl_lunas!="-";
 
 /* ================= LOAD ================= */
 fetch(SHEET_URL)
@@ -101,11 +101,13 @@ function openPetugas(p){
     h+=`<tr class="clickable" onclick="detailLunas('${t}')">
     <td>${t}</td><td>${byDate[t]}</td></tr>`;
   });
-  h+=`</tbody></table>
+  h+=`</tbody></table>`;
 
-  <h6 class="text-secondary mt-3 clickable" onclick="detailBelum()">
-  Belum Lunas (${belum.length})
-  </h6>`;
+  if(belum.length>0){
+    h+=`<h6 class="text-secondary mt-3 clickable" onclick="detailBelum()">
+    Belum Lunas
+    </h6>`;
+  }
 
   view.innerHTML=h;
 }
@@ -143,8 +145,7 @@ function renderDetailTable(title,color){
     </tr>`;
   });
 
-  h+=`</tbody></table></div>
-  <small class="text-muted">Klik salah satu baris untuk melihat Card View</small>`;
+  h+=`</tbody></table></div>`;
   view.innerHTML=h;
 }
 
@@ -168,7 +169,6 @@ function showCards(){
 </script>
 </body>
 </html>
-
 
 
 
