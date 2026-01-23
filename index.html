@@ -5,221 +5,131 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rekap Tunggakan ULP Tulung</title>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
 <style>
 :root{
-  --pln-blue:#009FDA;
-  --pln-yellow:#FFD200;
+  --pln:#009FDA;
+  --bg:#f6f8fa;
+  --text:#111;
+  --card:#fff;
 }
-
-body{
-  padding:15px;
-  background:#f5f6f8;
+[data-theme="dark"]{
+  --bg:#121212;
+  --text:#eee;
+  --card:#1e1e1e;
 }
-
-/* ===== HEADER PLN ===== */
-.header-pln{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  margin-bottom:18px;
-  padding-bottom:10px;
-  border-bottom:3px solid var(--pln-blue);
-}
-.header-pln img{height:42px}
-.header-pln .title h4{
-  margin:0;
-  font-weight:700;
-  color:var(--pln-blue);
-}
-.header-pln .title small{
-  color:#555;
-  font-weight:600;
-}
-
-/* ===== NAV ===== */
-.nav-tabs .nav-link{
-  color:var(--pln-blue);
-  font-weight:600;
-}
-.nav-tabs .nav-link.active{
-  background:var(--pln-blue);
-  color:#fff;
-  border-color:var(--pln-blue);
-}
-
-/* ===== BUTTON ===== */
-.btn-success{
-  background:var(--pln-yellow);
-  border-color:var(--pln-yellow);
-  color:#000;
-  font-weight:600;
-}
-.btn-success:hover{
-  background:#e6bf00;
-  border-color:#e6bf00;
-}
-
-th{cursor:pointer}
-.clickable-row:hover{background:#eef}
-
-/* ===== MOBILE CARD ===== */
-@media(max-width:768px){
-  table thead{display:none}
-  table,tbody,tr,td{display:block;width:100%}
-  tr{
-    background:#fff;
-    margin-bottom:12px;
-    border-radius:10px;
-    padding:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,.1)
-  }
-  td{border:none;padding:4px 0}
-  td::before{
-    content:attr(data-label);
-    font-weight:600;
-    font-size:12px;
-    color:#666;
-    display:block
-  }
-  #mobileSort{display:block}
-}
-#mobileSort{display:none}
+body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
+header{display:flex;gap:12px;align-items:center;padding:12px;border-bottom:3px solid var(--pln)}
+header img{height:36px}
+h1{font-size:1.2rem;margin:0;color:var(--pln)}
+small{color:#666}
+.tabs{display:flex;gap:6px;padding:10px}
+.tab{padding:6px 12px;border-radius:8px;border:1px solid var(--pln);background:#fff;color:var(--pln);cursor:pointer}
+.tab.active{background:var(--pln);color:#fff}
+.toggle{margin-left:auto;background:#ffd100;border:none;padding:6px 10px;border-radius:6px}
+.card{background:var(--card);margin:10px;border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #ddd}
+th{background:#222;color:#fff}
+tr.click:hover{background:#f1f1f1;cursor:pointer}
+button.back{margin:10px;padding:6px 10px;border:none;border-radius:6px;background:var(--pln);color:#fff}
 </style>
 </head>
 
-<body>
-<div class="container">
+<body data-theme="light">
 
-<!-- HEADER -->
-<div class="header-pln">
-  <img alt="PLN Electricity Services"
-     src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABQCAYAAAC5s5zXAAAACXBIWXMAAAsSAAALEgHS3X78AAAgAElEQVR4nOydeZBc1X3n/3Nn7q0pUqQh...SNIP...==" />
-  <div class="title">
-    <h4>Rekap Tunggakan</h4>
+<header>
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAA..." alt="PLN">
+  <div>
+    <h1>Rekap Tunggakan</h1>
     <small>ULP Tulung</small>
   </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchSheet('lembar1',this)">Lembar 1</div>
+  <div class="tab" onclick="switchSheet('lembar2',this)">Lembar 2</div>
+  <div class="tab" onclick="switchSheet('lembar3',this)">Lembar 3</div>
+  <button class="toggle" onclick="toggleTheme()">🌙</button>
 </div>
 
-<!-- TAB -->
-<ul class="nav nav-tabs mb-3" id="sheetTabs">
-  <li class="nav-item"><a class="nav-link active" data-sheet="lembar1">Lembar 1</a></li>
-  <li class="nav-item"><a class="nav-link" data-sheet="lembar2">Lembar 2</a></li>
-  <li class="nav-item"><a class="nav-link" data-sheet="lembar3">Lembar 3</a></li>
-</ul>
+<button class="back" onclick="goBack()" style="display:none">⬅ Kembali</button>
 
-<div class="mb-2">
-  <button id="backBtn" class="btn btn-secondary btn-sm d-none">⬅ Kembali</button>
-  <input id="searchBox" class="form-control mt-2 d-none" placeholder="🔍 Cari data...">
-  <select id="mobileSort" class="form-select mt-2 d-none">
-    <option value="">↕ Urutkan Data</option>
-    <option value="idpel">ID Pel</option>
-    <option value="nama">Nama</option>
-    <option value="tarif">Tarif</option>
-    <option value="daya">Daya</option>
-    <option value="jumlah">Jumlah</option>
-    <option value="tgl_lunas">Tanggal</option>
-  </select>
-  <button id="exportBtn" class="btn btn-success btn-sm mt-2 d-none">⬇ Export Excel</button>
-</div>
-
-<div class="table-responsive">
-<table id="dataTable" class="table table-bordered table-striped">
-  <thead id="tableHead" class="table-dark"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
-</div>
-
+<div class="card">
+  <table>
+    <thead></thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script>
 const SHEETS={
- lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
- lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
- lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+  lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+  lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+  lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let allData=[],level="petugas",petugasAktif=null,tglAktif=null;
-let sortCol=null,sortAsc=true;
+let allData=[],currentLevel="petugas";
 
-document.addEventListener("DOMContentLoaded",()=>{
- loadCSV("lembar1");
- document.querySelectorAll("#sheetTabs .nav-link").forEach(t=>{
-  t.onclick=()=>{
-   document.querySelectorAll("#sheetTabs .nav-link").forEach(n=>n.classList.remove("active"));
-   t.classList.add("active");
-   loadCSV(t.dataset.sheet);
-  }
- });
- backBtn.onclick=goBack;
- searchBox.onkeyup=filterTable;
- exportBtn.onclick=exportExcel;
- mobileSort.onchange=()=>{sortCol=mobileSort.value;sortAsc=true;renderDetail(petugasAktif,tglAktif)};
-});
+function toggleTheme(){
+  document.body.dataset.theme =
+    document.body.dataset.theme==="dark"?"light":"dark";
+}
 
-async function loadCSV(s){
- const txt=await (await fetch(SHEETS[s])).text();
- let p=Papa.parse(txt,{header:true,skipEmptyLines:true});
- if(p.meta.fields.length===1)p=Papa.parse(txt,{header:true,skipEmptyLines:true,delimiter:";"});
- allData=p.data.filter(r=>r.petugas);
- renderPetugas();
+function switchSheet(s,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  loadCSV(s);
+}
+
+async function loadCSV(sheet){
+  const r=await fetch(SHEETS[sheet]);
+  const t=await r.text();
+  allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
+  renderPetugas();
 }
 
 function renderPetugas(){
- level="petugas";toggle(false,false,false);
- const m={};allData.forEach(r=>m[r.petugas]=(m[r.petugas]||0)+1);
- renderHead(["Petugas","Jumlah"]);
- let h=`<tr class="clickable-row" data-p="ALL"><td data-label="Petugas"><b>ALL</b></td><td data-label="Jumlah"><b>${Object.values(m).reduce((a,b)=>a+b,0)}</b></td></tr>`;
- Object.keys(m).forEach(p=>h+=`<tr class="clickable-row" data-p="${p}"><td data-label="Petugas">${p}</td><td data-label="Jumlah">${m[p]}</td></tr>`);
- tableBody.innerHTML=h;
- tableBody.querySelectorAll("tr").forEach(r=>r.onclick=()=>renderTanggal(r.dataset.p));
+  currentLevel="petugas";
+  document.querySelector(".back").style.display="none";
+
+  const rekap={};
+  allData.forEach(r=>{
+    const p=r.petugas||"TANPA PETUGAS";
+    rekap[p]=(rekap[p]||0)+1;
+  });
+
+  const thead=document.querySelector("thead");
+  const tbody=document.querySelector("tbody");
+  thead.innerHTML="<tr><th>Petugas</th><th>Jumlah</th></tr>";
+
+  let html=`<tr class="click" onclick="renderDetail('ALL')"><td><b>ALL</b></td><td><b>${allData.length}</b></td></tr>`;
+  Object.keys(rekap).forEach(p=>{
+    html+=`<tr class="click" onclick="renderDetail('${p}')"><td>${p}</td><td>${rekap[p]}</td></tr>`;
+  });
+  tbody.innerHTML=html;
 }
 
-function renderTanggal(p){
- level="tanggal";petugasAktif=p;toggle(true,false,false);
- const d=p==="ALL"?allData:allData.filter(r=>r.petugas===p);
- const m={};d.forEach(r=>m[r.tgl_lunas]=(m[r.tgl_lunas]||0)+1);
- renderHead(["Tanggal","Jumlah"]);
- tableBody.innerHTML=Object.keys(m).map(t=>`<tr class="clickable-row" data-t="${t}"><td data-label="Tanggal">${t}</td><td data-label="Jumlah">${m[t]}</td></tr>`).join("");
- tableBody.querySelectorAll("tr").forEach(r=>r.onclick=()=>renderDetail(p,r.dataset.t));
+function renderDetail(p){
+  currentLevel="detail";
+  document.querySelector(".back").style.display="block";
+
+  const rows = p==="ALL" ? allData : allData.filter(r=>r.petugas===p);
+  const cols=Object.keys(rows[0]||{});
+
+  document.querySelector("thead").innerHTML =
+    "<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
+  document.querySelector("tbody").innerHTML =
+    rows.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
 }
 
-function renderDetail(p,t){
- level="detail";petugasAktif=p;tglAktif=t;toggle(true,true,true);
- let d=allData.filter(r=>(p==="ALL"||r.petugas===p)&&r.tgl_lunas===t);
- if(sortCol)d.sort((a,b)=>sortAsc?(a[sortCol]||"").localeCompare(b[sortCol]||"",undefined,{numeric:true}):(b[sortCol]||"").localeCompare(a[sortCol]||"",undefined,{numeric:true}));
- const h=["idpel","koked","nama","alamat","tarif","daya","rptag","rpbk","jumlah","petugas","tgl_lunas"];
- renderHead(h,true);
- tableBody.innerHTML=d.map(r=>"<tr>"+h.map(c=>`<td data-label="${c}">${r[c]||""}</td>`).join("")+"</tr>").join("");
-}
+function goBack(){ renderPetugas(); }
 
-function renderHead(h,s){
- tableHead.innerHTML="<tr>"+h.map(c=>s?`<th data-col="${c}">${c}</th>`:`<th>${c}</th>`).join("")+"</tr>";
- if(s)tableHead.querySelectorAll("th").forEach(th=>th.onclick=()=>{sortAsc=sortCol===th.dataset.col?!sortAsc:true;sortCol=th.dataset.col;renderDetail(petugasAktif,tglAktif)});
-}
-
-function toggle(b,s,e){
- backBtn.classList.toggle("d-none",!b);
- searchBox.classList.toggle("d-none",!s);
- exportBtn.classList.toggle("d-none",!e);
- level==="detail"?mobileSort.classList.remove("d-none"):mobileSort.classList.add("d-none");
-}
-
-function goBack(){level==="detail"?renderTanggal(petugasAktif):renderPetugas()}
-function filterTable(){const q=searchBox.value.toLowerCase();document.querySelectorAll("#tableBody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")}
-function exportExcel(){saveAs(new Blob([dataTable.outerHTML],{type:"application/vnd.ms-excel"}),"rekap_tunggakan.xls")}
+loadCSV("lembar1");
 </script>
+
 </body>
 </html>
-
-
-
-
-
-
-
 
 
