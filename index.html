@@ -14,30 +14,68 @@
   --text:#111;
   --card:#fff;
 }
-[data-theme="dark"]{
-  --bg:#121212;
-  --text:#eee;
-  --card:#1e1e1e;
+body{
+  margin:0;
+  font-family:system-ui;
+  background:var(--bg);
+  color:var(--text);
 }
-body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
-header{display:flex;gap:12px;align-items:center;padding:12px;border-bottom:3px solid var(--pln)}
+header{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-bottom:3px solid var(--pln);
+}
 header img{height:36px}
 h1{font-size:1.2rem;margin:0;color:var(--pln)}
 small{color:#666}
-.tabs{display:flex;gap:6px;padding:10px}
-.tab{padding:6px 12px;border-radius:8px;border:1px solid var(--pln);background:#fff;color:var(--pln);cursor:pointer}
+
+.tabs{
+  display:flex;
+  gap:6px;
+  padding:10px;
+}
+.tab{
+  padding:6px 12px;
+  border-radius:8px;
+  border:1px solid var(--pln);
+  background:#fff;
+  color:var(--pln);
+  cursor:pointer;
+}
 .tab.active{background:var(--pln);color:#fff}
-.toggle{margin-left:auto;background:#ffd100;border:none;padding:6px 10px;border-radius:6px}
-.card{background:var(--card);margin:10px;border-radius:12px;overflow:auto}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #ddd}
-th{background:#222;color:#fff}
-tr.click:hover{background:#f1f1f1;cursor:pointer}
-button.back{margin:10px;padding:6px 10px;border:none;border-radius:6px;background:var(--pln);color:#fff}
+
+button.back{
+  margin:0 10px;
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  background:var(--pln);
+  color:#fff;
+}
+
+.card{
+  background:var(--card);
+  margin:10px;
+  border-radius:12px;
+  padding:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.card.click{cursor:pointer}
+.card.click:hover{background:#f1f1f1}
+
+.badge{
+  padding:3px 8px;
+  border-radius:6px;
+  font-size:.75rem;
+}
+.lunas{background:#28a745;color:#fff}
+.belum{background:#dc3545;color:#fff}
 </style>
 </head>
 
-<body data-theme="light">
+<body>
 
 <header>
   <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABQCAYAAABg7xFvAAA..." alt="PLN">
@@ -51,85 +89,113 @@ button.back{margin:10px;padding:6px 10px;border:none;border-radius:6px;backgroun
   <div class="tab active" onclick="switchSheet('lembar1',this)">Lembar 1</div>
   <div class="tab" onclick="switchSheet('lembar2',this)">Lembar 2</div>
   <div class="tab" onclick="switchSheet('lembar3',this)">Lembar 3</div>
-  <button class="toggle" onclick="toggleTheme()">🌙</button>
 </div>
 
 <button class="back" onclick="goBack()" style="display:none">⬅ Kembali</button>
 
-<div class="card">
-  <table>
-    <thead></thead>
-    <tbody></tbody>
-  </table>
-</div>
+<div id="content"></div>
 
 <script>
 const SHEETS={
-  lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
-  lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
-  lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+ lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+ lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+ lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
 };
 
-let allData=[],currentLevel="petugas";
-
-function toggleTheme(){
-  document.body.dataset.theme =
-    document.body.dataset.theme==="dark"?"light":"dark";
-}
+let allData=[],level="petugas",selectedPetugas=null,selectedTanggal=null;
 
 function switchSheet(s,el){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  el.classList.add("active");
-  loadCSV(s);
+ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+ el.classList.add("active");
+ loadCSV(s);
 }
 
 async function loadCSV(sheet){
-  const r=await fetch(SHEETS[sheet]);
-  const t=await r.text();
-  allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
-  renderPetugas();
+ const r=await fetch(SHEETS[sheet]);
+ const t=await r.text();
+ allData=Papa.parse(t,{header:true,skipEmptyLines:true}).data;
+ renderPetugas();
 }
 
 function renderPetugas(){
-  currentLevel="petugas";
-  document.querySelector(".back").style.display="none";
+ level="petugas";
+ selectedPetugas=null;
+ document.querySelector(".back").style.display="none";
+ const c=document.getElementById("content");
+ c.innerHTML="";
 
-  const rekap={};
-  allData.forEach(r=>{
-    const p=r.petugas||"TANPA PETUGAS";
-    rekap[p]=(rekap[p]||0)+1;
-  });
+ const rekap={};
+ allData.forEach(r=>{
+  const p=r.petugas||"TANPA PETUGAS";
+  rekap[p]=(rekap[p]||0)+1;
+ });
 
-  const thead=document.querySelector("thead");
-  const tbody=document.querySelector("tbody");
-  thead.innerHTML="<tr><th>Petugas</th><th>Jumlah</th></tr>";
-
-  let html=`<tr class="click" onclick="renderDetail('ALL')"><td><b>ALL</b></td><td><b>${allData.length}</b></td></tr>`;
-  Object.keys(rekap).forEach(p=>{
-    html+=`<tr class="click" onclick="renderDetail('${p}')"><td>${p}</td><td>${rekap[p]}</td></tr>`;
-  });
-  tbody.innerHTML=html;
+ Object.keys(rekap).forEach(p=>{
+  c.innerHTML+=`
+   <div class="card click" onclick="renderTanggal('${p}')">
+     <b>${p}</b><br>Jumlah: ${rekap[p]}
+   </div>`;
+ });
 }
 
-function renderDetail(p){
-  currentLevel="detail";
-  document.querySelector(".back").style.display="block";
+function renderTanggal(p){
+ level="tanggal";
+ selectedPetugas=p;
+ document.querySelector(".back").style.display="block";
+ const c=document.getElementById("content");
+ c.innerHTML="";
 
-  const rows = p==="ALL" ? allData : allData.filter(r=>r.petugas===p);
-  const cols=Object.keys(rows[0]||{});
+ const rows=allData.filter(r=>r.petugas===p);
+ const rekap={};
+ rows.forEach(r=>{
+  const t=r.tgl_lunas||"BELUM";
+  rekap[t]=(rekap[t]||0)+1;
+ });
 
-  document.querySelector("thead").innerHTML =
-    "<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
-  document.querySelector("tbody").innerHTML =
-    rows.map(r=>"<tr>"+cols.map(c=>`<td>${r[c]||""}</td>`).join("")+"</tr>").join("");
+ Object.keys(rekap).forEach(t=>{
+  c.innerHTML+=`
+   <div class="card click" onclick="renderDetail('${t}')">
+     <b>${t}</b><br>Jumlah: ${rekap[t]}
+   </div>`;
+ });
 }
 
-function goBack(){ renderPetugas(); }
+function renderDetail(tgl){
+ level="detail";
+ selectedTanggal=tgl;
+ const c=document.getElementById("content");
+ c.innerHTML="";
+
+ const rows=allData.filter(r=>{
+  return r.petugas===selectedPetugas &&
+   ((tgl==="BELUM" && !r.tgl_lunas) || r.tgl_lunas===tgl);
+ });
+
+ rows.forEach(r=>{
+  const status = r.tgl_lunas ? "lunas" : "belum";
+  c.innerHTML+=`
+   <div class="card">
+     <b>${r.nama}</b><br>
+     ID: ${r.idpel}<br>
+     Alamat: ${r.alamat}<br>
+     Jumlah: ${r.jumlah}<br>
+     <span class="badge ${status}">
+       ${status.toUpperCase()}
+     </span>
+   </div>`;
+ });
+}
+
+function goBack(){
+ if(level==="detail") renderTanggal(selectedPetugas);
+ else renderPetugas();
+}
 
 loadCSV("lembar1");
 </script>
 
 </body>
 </html>
+
 
 
