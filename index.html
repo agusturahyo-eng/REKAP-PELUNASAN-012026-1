@@ -9,26 +9,29 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
-body { background:#f4f6f9 }
-.header {
-  background:#009fe3;
-  color:white;
-  padding:15px;
-  border-radius:10px;
+body{background:#f4f6f9}
+.header{
+  background:#009fe3;color:#fff;
+  padding:15px;border-radius:10px
 }
-.card { border-radius:12px }
-.click { cursor:pointer }
+.card{border-radius:12px}
+.click{cursor:pointer}
 </style>
 </head>
 
 <body class="container my-3">
 
-<!-- HEADER -->
-<div class="header mb-3 text-center">
-  <h5 class="mb-0">PT PLN (Persero)</h5>
-  <small>ULP TULUNG</small>
-  <h6 class="mt-2">Rekap Tunggakan</h6>
+<div class="header text-center mb-3">
+  <h6 class="mb-0">PT PLN (Persero)</h6>
+  <small>UP3 Klaten – ULP Tulung</small>
+  <h5 class="mt-2">Rekap Tunggakan</h5>
 </div>
+
+<ul class="nav nav-tabs mb-2">
+  <li class="nav-item"><a class="nav-link active" onclick="switchSheet('lembar1')">Lembar 1</a></li>
+  <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar2')">Lembar 2</a></li>
+  <li class="nav-item"><a class="nav-link" onclick="switchSheet('lembar3')">Lembar 3</a></li>
+</ul>
 
 <button id="btnBack" onclick="goBack()" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
 
@@ -36,40 +39,42 @@ body { background:#f4f6f9 }
 <div id="cardView"></div>
 
 <script>
-/* ===================== CONFIG ===================== */
-const CSV_URL = "PASTE_URL_CSV_GOOGLE_SHEET_DI_SINI";
+/* ================= CSV URL (ASLI PUNYAMU) ================= */
+const SHEETS={
+lembar1:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv",
+lembar2:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv",
+lembar3:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"
+};
 
-/* ===================== STATE ===================== */
-let allData = [];
-let level = "petugas";
-let currentPetugas = null;
-let currentTanggal = null;
-let currentDetail = [];
+/* ================= STATE ================= */
+let allData=[],currentSheet="lembar1";
+let level="petugas",currentPetugas=null,currentDetail=[];
 
-/* ===================== LOAD DATA ===================== */
-fetch(CSV_URL)
+/* ================= LOAD ================= */
+function loadSheet(sheet){
+currentSheet=sheet;
+fetch(SHEETS[sheet])
 .then(r=>r.text())
 .then(t=>{
-  const p = Papa.parse(t,{header:true,skipEmptyLines:true});
-  allData = p.data;
-  renderPetugas();
+ const p=Papa.parse(t,{header:true,skipEmptyLines:true});
+ allData=p.data;
+ renderPetugas();
 });
-
-/* ===================== WA STATUS ===================== */
-function getWASent(){
-  return JSON.parse(localStorage.getItem("wa_sent")||"{}");
 }
-function isWASent(id){ return getWASent()[id]; }
+loadSheet("lembar1");
+
+/* ================= WA STATUS ================= */
+function getWASent(){return JSON.parse(localStorage.getItem("wa_sent")||"{}")}
+function isWASent(id){return getWASent()[id]}
 function markWASent(id){
-  const d=getWASent(); d[id]=true;
-  localStorage.setItem("wa_sent",JSON.stringify(d));
-  renderCardView(currentDetail);
+ const d=getWASent(); d[id]=true;
+ localStorage.setItem("wa_sent",JSON.stringify(d));
+ renderCardView(currentDetail);
 }
 
-/* ===================== WA MESSAGE ===================== */
+/* ================= WA TEXT ================= */
 function waText(r){
-return encodeURIComponent(`
-PT. PLN (PERSERO)
+return encodeURIComponent(`PT PLN (Persero)
 UP3 KLATEN - ULP TULUNG
 
 PEMBERITAHUAN PEMUTUSAN SEMENTARA
@@ -80,80 +85,49 @@ Alamat : ${r.alamat}
 Tarif/Daya : ${r.tarif}/${r.daya}
 Koked : ${r.koked}
 
-Periode : ${r.periode}
 Jumlah Tunggakan :
 Rp ${(+r.jumlah).toLocaleString("id-ID")}
 
-Mohon segera melakukan pelunasan.
-Abaikan pesan ini jika sudah membayar.
-
-PLN ULP TULUNG
-`);
+Abaikan jika sudah membayar.
+PLN ULP TULUNG`);
 }
 
-/* ===================== RENDER ===================== */
+/* ================= RENDER ================= */
 function renderPetugas(){
-  level="petugas";
-  document.getElementById("btnBack").classList.add("d-none");
-  document.getElementById("cardView").innerHTML="";
+level="petugas";
+btnBack.classList.add("d-none");
+cardView.innerHTML="";
+const r={};
+allData.forEach(x=>r[x.petugas]=(r[x.petugas]||0)+1);
 
-  const r={};
-  allData.forEach(x=>{
-    r[x.petugas]=(r[x.petugas]||0)+1;
-  });
-
-  let h=`<table class="table table-bordered bg-white">
-  <tr class="table-primary"><th>Petugas</th><th>Jumlah</th></tr>`;
-  Object.keys(r).forEach(p=>{
-    h+=`<tr class="click" onclick="renderTanggal('${p}')">
-    <td>${p}</td><td>${r[p]}</td></tr>`;
-  });
-  h+=`</table>`;
-  document.getElementById("tableView").innerHTML=h;
+let h=`<table class="table bg-white">
+<tr class="table-primary"><th>Petugas</th><th>Jumlah</th></tr>`;
+Object.keys(r).forEach(p=>{
+ h+=`<tr class="click" onclick="renderDetail('${p}')"><td>${p}</td><td>${r[p]}</td></tr>`;
+});
+h+="</table>";
+tableView.innerHTML=h;
 }
 
-function renderTanggal(p){
-  level="tanggal"; currentPetugas=p;
-  document.getElementById("btnBack").classList.remove("d-none");
+function renderDetail(p){
+level="detail";currentPetugas=p;
+btnBack.classList.remove("d-none");
+const f=allData.filter(x=>x.petugas===p);
+currentDetail=f;
 
-  const f=allData.filter(x=>x.petugas===p);
-  const r={};
-  f.forEach(x=>r[x.tgl_lunas]=(r[x.tgl_lunas]||0)+1);
-
-  let h=`<table class="table table-bordered bg-white">
-  <tr class="table-success"><th>Tanggal</th><th>Jumlah</th></tr>`;
-  Object.keys(r).forEach(t=>{
-    h+=`<tr class="click" onclick="renderDetail('${p}','${t}')">
-    <td>${t}</td><td>${r[t]}</td></tr>`;
-  });
-  h+=`</table>`;
-  document.getElementById("tableView").innerHTML=h;
+let h=`<table class="table bg-white">
+<tr class="table-dark"><th>IDPEL</th><th>Nama</th><th>Jumlah</th></tr>`;
+f.forEach(x=>{
+ h+=`<tr class="click" onclick="renderCardView(currentDetail)">
+ <td>${x.idpel}</td><td>${x.nama}</td>
+ <td>Rp ${(+x.jumlah).toLocaleString("id-ID")}</td></tr>`;
+});
+h+="</table>";
+tableView.innerHTML=h;
+renderCardView(f);
 }
 
-function renderDetail(p,t){
-  level="detail"; currentTanggal=t;
-  document.getElementById("btnBack").classList.remove("d-none");
-
-  const f=allData.filter(x=>x.petugas===p && x.tgl_lunas===t);
-  currentDetail=f;
-
-  let h=`<table class="table table-bordered bg-white">
-  <tr class="table-dark">
-    <th>IDPEL</th><th>Nama</th><th>Jumlah</th>
-  </tr>`;
-  f.forEach(x=>{
-    h+=`<tr class="click" onclick="renderCardView(currentDetail)">
-    <td>${x.idpel}</td>
-    <td>${x.nama}</td>
-    <td>Rp ${(+x.jumlah).toLocaleString("id-ID")}</td>
-    </tr>`;
-  });
-  h+=`</table>`;
-  document.getElementById("tableView").innerHTML=h;
-  renderCardView(f);
-}
-
-/* ===================== CARD VIEW ===================== */
+/* ================= CARD ================= */
 function renderCardView(data){
 let h="";
 data.forEach(r=>{
@@ -161,37 +135,29 @@ const sent=isWASent(r.idpel);
 h+=`
 <div class="card mb-2 ${sent?'border-success':''}">
 <div class="card-body p-2">
-${sent?'<span class="badge bg-success mb-1">✔ SUDAH DIKIRIM</span><br>':''}
-<b>${r.nama}</b><br>
-IDPEL: ${r.idpel}<br>
-${r.alamat}<br>
-Koked: ${r.koked}<br>
-Tarif/Daya: ${r.tarif}/${r.daya}<br>
+${sent?'<span class="badge bg-success">✔ SUDAH DIKIRIM</span><br>':''}
+<b>${r.nama}</b><br>IDPEL ${r.idpel}<br>${r.alamat}<br>
+Tarif/Daya ${r.tarif}/${r.daya}<br>
 <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b>
 <div class="mt-2">
-<a target="_blank"
- class="btn btn-success btn-sm"
- href="https://wa.me/${r.no_hp}?text=${waText(r)}">
-📤 WhatsApp
-</a>
+<a class="btn btn-success btn-sm" target="_blank"
+href="https://wa.me/${r.no_hp}?text=${waText(r)}">📤 WhatsApp</a>
 <button class="btn btn-outline-success btn-sm"
- onclick="markWASent('${r.idpel}')">
-✔ Tandai
-</button>
+onclick="markWASent('${r.idpel}')">✔ Tandai</button>
 </div>
-</div>
-</div>`;
+</div></div>`;
 });
-document.getElementById("cardView").innerHTML=h;
+cardView.innerHTML=h;
 }
 
-/* ===================== BACK ===================== */
-function goBack(){
-if(level==="detail") renderTanggal(currentPetugas);
-else renderPetugas();
+/* ================= NAV ================= */
+function goBack(){renderPetugas()}
+function switchSheet(s){
+document.querySelectorAll(".nav-link").forEach(x=>x.classList.remove("active"));
+event.target.classList.add("active");
+loadSheet(s);
 }
 </script>
-
 </body>
 </html>
 
