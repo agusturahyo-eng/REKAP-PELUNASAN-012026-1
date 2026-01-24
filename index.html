@@ -20,9 +20,9 @@ tr:hover{background:#eef3ff}
 <div class="container my-3">
 
 <ul class="nav nav-tabs mb-3">
-  <li class="nav-item"><a class="nav-link active" onclick="loadSheet('lembar1')">Lembar 1</a></li>
-  <li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar2')">Lembar 2</a></li>
-  <li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar3')">Lembar 3</a></li>
+  <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a></li>
+  <li class="nav-item"><a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a></li>
+  <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
 </ul>
 
 <h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
@@ -35,209 +35,165 @@ tr:hover{background:#eef3ff}
 <script>
 /* ================= CONFIG ================= */
 const SHEETS={
- lembar1:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"},
- lembar2:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"},
- lembar3:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
+  lembar1:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"},
+  lembar2:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"},
+  lembar3:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
 };
 
-let allData=[], currentDetail=[], currentPetugas="";
-let viewStack=[];
+/* ================= STATE ================= */
+let allData=[], currentPetugas=null, currentDetail=[], currentTitle="";
+let history=[], lastTableView=null;
 
-const backBtn=document.getElementById("backBtn");
-const view=document.getElementById("view");
+/* ================= UTIL ================= */
 const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="" && r.tgl_lunas!="-";
 
-/* ================= NAV ================= */
+/* ================= LOAD ================= */
+function loadSheet(key){
+  history=[];
+  backBtn.classList.add("d-none");
+  document.querySelectorAll(".nav-link").forEach(t=>t.classList.remove("active"));
+  document.getElementById("tab-"+key).classList.add("active");
+
+  fetch(SHEETS[key].url)
+    .then(r=>r.text())
+    .then(csv=>{
+      allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
+      renderPetugas();
+    });
+}
+
+/* ================= HISTORY ================= */
 function pushView(fn){
- viewStack.push(fn);
- backBtn.classList.remove("d-none");
+  history.push(fn);
+  backBtn.classList.remove("d-none");
 }
 backBtn.onclick=()=>{
- viewStack.pop();
- if(viewStack.length){
-   viewStack[viewStack.length-1]();
- }else{
-   backBtn.classList.add("d-none");
-   renderPetugas();
- }
+  history.pop();
+  if(history.length){
+    history[history.length-1]();
+  }else{
+    backBtn.classList.add("d-none");
+    renderPetugas();
+  }
 };
 
-/* ================= LOAD ================= */
-function loadSheet(k){
- viewStack=[];
- backBtn.classList.add("d-none");
- fetch(SHEETS[k].url).then(r=>r.text()).then(csv=>{
-   allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
-   renderPetugas();
- });
-}
-
-/* ================= TEMPLATE SURAT ================= */
-function templateSurat(r){
-return `
-PT. PLN (PERSERO)
+/* ================= WA ================= */
+function waMessage(r){
+  return encodeURIComponent(`PT. PLN (PERSERO)
 UP3 KLATEN
 ULP TULUNG
 
 PEMBERITAHUAN PEMUTUSAN SEMENTARA
 
-Nama  : ${r.nama}
+Nama : ${r.nama}
 IDPEL : ${r.idpel}
-Alamat: ${r.alamat}
-Tarif/Daya: ${r.tarif}/${r.daya}
+Alamat : ${r.alamat}
+Tarif/Daya : ${r.tarif}/${r.daya}
 Koded : ${r.koked}
 
 Jumlah Tunggakan:
-Rp ${Number(r.jumlah).toLocaleString("id-ID")}
+Rp ${(+r.jumlah).toLocaleString("id-ID")}
 
-Mohon segera dilakukan pembayaran.
-Abaikan pesan ini jika sudah membayar.
-
-PLN ULP TULUNG
-`;
+PLN ULP TULUNG`);
 }
 
-/* ================= REKAP PETUGAS ================= */
+/* ================= REKAP ================= */
 function renderPetugas(){
- viewStack=[];
- backBtn.classList.add("d-none");
+  history=[];
+  backBtn.classList.add("d-none");
+  const map={};
+  allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
 
- const map={};
- allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
+  let h=`<table class="table table-bordered">
+  <thead class="table-dark"><tr><th>Petugas</th><th>Jumlah</th></tr></thead><tbody>
+  <tr class="table-primary clickable" onclick="openGlobal()">
+  <td><b>SEMUA PETUGAS</b></td><td><b>${allData.length}</b></td></tr>`;
 
- let h=`<table class="table table-bordered">
- <thead class="table-dark"><tr><th>Petugas</th><th>Jumlah</th></tr></thead><tbody>
- <tr class="table-primary clickable" onclick="openGlobal()">
- <td><b>SEMUA PETUGAS</b></td><td><b>${allData.length}</b></td></tr>`;
+  Object.keys(map).forEach(p=>{
+    h+=`<tr class="clickable" onclick="openPetugas('${p}')"><td>${p}</td><td>${map[p]}</td></tr>`;
+  });
 
- Object.keys(map).forEach(p=>{
-  h+=`<tr class="clickable" onclick="openPetugas('${p}')">
-  <td>${p}</td><td>${map[p]}</td></tr>`;
- });
-
- h+=`</tbody></table>`;
- view.innerHTML=h;
+  view.innerHTML=h+`</tbody></table>`;
 }
 
-/* ================= GLOBAL ================= */
 function openGlobal(){
- pushView(renderPetugas);
- currentPetugas="SEMUA";
- const lunas=allData.filter(isLunas);
- const byDate={};
- lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
+  pushView(renderPetugas);
+  const lunas=allData.filter(isLunas);
+  const byDate={};
+  lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
- let h=`<h6 class="text-primary">Rekap Semua Petugas</h6>
- <table class="table table-sm table-bordered">
- <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
-
- Object.keys(byDate).forEach(t=>{
-  h+=`<tr class="clickable" onclick="detailGlobalLunas('${t}')">
-  <td>${t}</td><td>${byDate[t]}</td></tr>`;
- });
- h+=`</tbody></table>
- <h6 class="clickable" onclick="detailGlobalBelum()">Belum Lunas</h6>`;
- view.innerHTML=h;
+  let h=`<h6 class="text-primary">Rekap Semua Petugas</h6>
+  <table class="table table-sm table-bordered mt-2">
+  <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
+  Object.keys(byDate).forEach(t=>{
+    h+=`<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
+  });
+  view.innerHTML=h+`</tbody></table>`;
 }
 
-/* ================= PETUGAS ================= */
 function openPetugas(p){
- pushView(renderPetugas);
- currentPetugas=p;
+  pushView(renderPetugas);
+  currentPetugas=p;
+  const data=allData.filter(r=>r.petugas===p);
+  const byDate={};
+  data.filter(isLunas).forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
- const data=allData.filter(r=>r.petugas===p);
- const lunas=data.filter(isLunas);
- const byDate={};
- lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
-
- let h=`<h6 class="text-primary">Petugas: ${p}</h6>
- <table class="table table-sm table-bordered">
- <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
-
- Object.keys(byDate).forEach(t=>{
-  h+=`<tr class="clickable" onclick="detailLunas('${t}')">
-  <td>${t}</td><td>${byDate[t]}</td></tr>`;
- });
- h+=`</tbody></table>
- <h6 class="clickable" onclick="detailBelum()">Belum Lunas</h6>`;
- view.innerHTML=h;
+  let h=`<h6 class="text-primary">Petugas: ${p}</h6>
+  <table class="table table-sm table-bordered mt-2">
+  <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
+  Object.keys(byDate).forEach(t=>{
+    h+=`<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
+  });
+  view.innerHTML=h+`</tbody></table>`;
 }
 
 /* ================= DETAIL ================= */
 function detailLunas(t){
- pushView(()=>openPetugas(currentPetugas));
- currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r)&&r.tgl_lunas===t);
- renderDetailTable(`Detail Lunas ${t}`);
-}
-function detailBelum(){
- pushView(()=>openPetugas(currentPetugas));
- currentDetail=allData.filter(r=>r.petugas===currentPetugas&&!isLunas(r));
- renderDetailTable("Detail Belum Lunas");
+  pushView(()=>openPetugas(currentPetugas));
+  currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r) && r.tgl_lunas===t);
+  renderDetailTable(`Detail Lunas ${t}`,"success");
 }
 function detailGlobalLunas(t){
- pushView(openGlobal);
- currentDetail=allData.filter(r=>isLunas(r)&&r.tgl_lunas===t);
- renderDetailTable(`Detail Lunas ${t}`);
-}
-function detailGlobalBelum(){
- pushView(openGlobal);
- currentDetail=allData.filter(r=>!isLunas(r));
- renderDetailTable("Detail Belum Lunas");
+  pushView(openGlobal);
+  currentDetail=allData.filter(r=>isLunas(r)&&r.tgl_lunas===t);
+  renderDetailTable(`Detail Lunas ${t}`,"success");
 }
 
-/* ================= TABLE ================= */
-function renderDetailTable(title){
- let h=`<h6>${title}</h6>
- <button class="btn btn-success btn-sm mb-2" onclick="exportExcel()">⬇ Export Excel</button>
- <table class="table table-sm table-bordered"><thead>
- <tr><th>IDPEL</th><th>Nama</th><th>Alamat</th><th>Rp</th></tr>
- </thead><tbody>`;
+function renderDetailTable(title,color){
+  lastTableView=()=>renderDetailTable(title,color);
 
- currentDetail.forEach(r=>{
-  h+=`<tr class="clickable" onclick="showCards()">
-  <td>${r.idpel}</td><td>${r.nama}</td>
-  <td>${r.alamat}</td>
-  <td class="text-end">${Number(r.jumlah).toLocaleString("id-ID")}</td></tr>`;
- });
- h+=`</tbody></table>`;
- view.innerHTML=h;
+  let h=`<h6 class="text-${color}">${title}</h6>
+  <div class="table-responsive mt-2">
+  <table class="table table-sm table-bordered">
+  <thead class="table-${color}">
+  <tr><th>IDPEL</th><th>Nama</th><th>Alamat</th><th>Rp</th></tr>
+  </thead><tbody>`;
+
+  currentDetail.forEach(r=>{
+    h+=`<tr class="clickable" onclick="showCards()">
+    <td>${r.idpel}</td><td>${r.nama}</td><td>${r.alamat}</td>
+    <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td></tr>`;
+  });
+
+  view.innerHTML=h+`</tbody></table></div>`;
 }
 
-/* ================= CARD ================= */
 function showCards(){
- pushView(()=>renderDetailTable("Detail"));
- let h=`<h6 class="text-primary">Detail Pelanggan</h6>`;
- currentDetail.forEach(r=>{
-  let msg=encodeURIComponent(templateSurat(r));
-  h+=`<div class="card mb-2"><div class="card-body p-2">
-  <b>${r.nama}</b><br>IDPEL: ${r.idpel}<br>${r.alamat}<br>
-  <b>Rp ${Number(r.jumlah).toLocaleString("id-ID")}</b><br>
-  <a class="btn btn-success btn-sm mt-2" target="_blank"
-  href="https://wa.me/?text=${msg}">📤 Kirim via WhatsApp</a>
-  </div></div>`;
- });
- view.innerHTML=h;
+  pushView(lastTableView);
+  let h=`<h6 class="text-primary">Detail Pelanggan</h6>`;
+  currentDetail.forEach(r=>{
+    h+=`<div class="card mb-2"><div class="card-body p-2">
+    <b>${r.nama}</b><br>IDPEL: ${r.idpel}<br>${r.alamat}<br>
+    <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b><br>
+    <a class="btn btn-success btn-sm mt-2" target="_blank"
+    href="https://wa.me/${r.no_hp||""}?text=${waMessage(r)}">📤 Kirim WA</a>
+    </div></div>`;
+  });
+  view.innerHTML=h;
 }
 
-/* ================= EXCEL ================= */
-function exportExcel(){
- let t="<table><tr><th>IDPEL</th><th>Nama</th><th>Alamat</th><th>Jumlah</th></tr>";
- currentDetail.forEach(r=>{
-  t+=`<tr><td>${r.idpel}</td><td>${r.nama}</td><td>${r.alamat}</td><td>${r.jumlah}</td></tr>`;
- });
- t+="</table>";
- saveAs(new Blob([t],{type:"application/vnd.ms-excel"}),"detail.xls");
-}
-
+/* LOAD */
 loadSheet("lembar1");
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
