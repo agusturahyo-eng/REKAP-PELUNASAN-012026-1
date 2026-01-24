@@ -19,22 +19,13 @@ tr:hover{background:#eef3ff}
 <body>
 <div class="container my-3">
 
-<!-- TAB PER LEMBAR -->
 <ul class="nav nav-tabs mb-3">
-  <li class="nav-item">
-    <a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a>
-  </li>
+  <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a></li>
+  <li class="nav-item"><a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a></li>
+  <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
 </ul>
 
-<h4 class="text-center text-primary mb-3">
-⚡ Rekap Tunggakan ULP Tulung
-</h4>
+<h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
 
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
 <div id="view"></div>
@@ -43,32 +34,30 @@ tr:hover{background:#eef3ff}
 
 <script>
 /* ================= CONFIG ================= */
-const SHEETS = {
-  lembar1:{ url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv" },
-  lembar2:{ url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv" },
-  lembar3:{ url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv" }
+const SHEETS={
+  lembar1:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"},
+  lembar2:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"},
+  lembar3:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
 };
 
 /* ================= STATE ================= */
 let allData=[], currentPetugas=null, currentDetail=[], currentTitle="";
-let history=[], currentSheet="lembar1";
+let history=[], lastDetailFn=null;
 
 /* ================= UTIL ================= */
 const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="" && r.tgl_lunas!="-";
 
 /* ================= LOAD ================= */
 function loadSheet(key){
-  currentSheet=key;
   history=[];
   backBtn.classList.add("d-none");
-
   document.querySelectorAll(".nav-link").forEach(t=>t.classList.remove("active"));
   document.getElementById("tab-"+key).classList.add("active");
 
   fetch(SHEETS[key].url)
     .then(r=>r.text())
     .then(csv=>{
-      allData = Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
+      allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
       renderPetugas();
     });
 }
@@ -90,8 +79,8 @@ backBtn.onclick=()=>{
 
 /* ================= WA MESSAGE ================= */
 function waMessage(r){
-  return encodeURIComponent(`
-PT. PLN (PERSERO)
+  return encodeURIComponent(
+`PT. PLN (PERSERO)
 UP3 KLATEN
 ULP TULUNG
 
@@ -103,22 +92,12 @@ Alamat : ${r.alamat}
 Tarif/Daya : ${r.tarif}/${r.daya}
 Koded : ${r.koked}
 
-Jumlah Tunggakan :
+Jumlah Tunggakan:
 Rp ${(+r.jumlah).toLocaleString("id-ID")}
-(Belum Termasuk Admin Bank)
 
-Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas   
-terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.
-Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi
-di tempat penerimaan pembayaran rekening listrik, kantor pos, atau bank yang ditunjuk oleh PLN.                       
-   Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi,         
-maka instalasi milik PLN akan dibongkar, dan penyambungan kembali dapat dilaksanakan setelah Saudara menyelesaikan    
-Biaya Penyambungan yang diperlakukan sebagai sambungan baru serta tetap diwajibkan membayar tagihan listrik           
-yang belum dilunasi beserta dendanya
-
-Tulung, 21 Januari 2026
-PLN ULP TULUNG
-`);
+Mohon segera dilakukan pelunasan.
+Terima kasih.
+PLN ULP TULUNG`);
 }
 
 /* ================= REKAP PETUGAS ================= */
@@ -130,13 +109,9 @@ function renderPetugas(){
   allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
 
   let h=`<table class="table table-bordered">
-  <thead class="table-dark">
-  <tr><th>Petugas</th><th>Jumlah</th></tr>
-  </thead><tbody>`;
-
-  h+=`<tr class="table-primary clickable" onclick="openGlobal()">
-  <td><b>SEMUA PETUGAS</b></td>
-  <td><b>${allData.length}</b></td>
+  <thead class="table-dark"><tr><th>Petugas</th><th>Jumlah</th></tr></thead><tbody>
+  <tr class="table-primary clickable" onclick="openGlobal()">
+    <td><b>SEMUA PETUGAS</b></td><td><b>${allData.length}</b></td>
   </tr>`;
 
   Object.keys(map).forEach(p=>{
@@ -155,27 +130,22 @@ function openGlobal(){
 
   const lunas=allData.filter(isLunas);
   const belum=allData.filter(r=>!isLunas(r));
-
   const byDate={};
+
   lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
   let h=`<h6 class="text-primary">Rekap Semua Petugas</h6>
   <h6 class="text-success mt-3">Lunas per Tanggal</h6>
   <table class="table table-sm table-bordered">
-  <thead class="table-success">
-  <tr><th>Tanggal</th><th>Jumlah</th></tr>
-  </thead><tbody>`;
+  <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
 
   Object.keys(byDate).forEach(t=>{
     h+=`<tr class="clickable" onclick="detailGlobalLunas('${t}')">
     <td>${t}</td><td>${byDate[t]}</td></tr>`;
   });
+
   h+=`</tbody></table>`;
-
-  if(belum.length>0){
-    h+=`<h6 class="mt-3 clickable" onclick="detailGlobalBelum()">Belum Lunas</h6>`;
-  }
-
+  if(belum.length) h+=`<h6 class="mt-3 clickable" onclick="detailGlobalBelum()">Belum Lunas</h6>`;
   view.innerHTML=h;
 }
 
@@ -187,50 +157,49 @@ function openPetugas(p){
   const data=allData.filter(r=>r.petugas===p);
   const lunas=data.filter(isLunas);
   const belum=data.filter(r=>!isLunas(r));
-
   const byDate={};
+
   lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
   let h=`<h6 class="text-primary">Petugas: ${p}</h6>
   <h6 class="text-success mt-3">Lunas per Tanggal</h6>
   <table class="table table-sm table-bordered">
-  <thead class="table-success">
-  <tr><th>Tanggal</th><th>Jumlah</th></tr>
-  </thead><tbody>`;
+  <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
 
   Object.keys(byDate).forEach(t=>{
     h+=`<tr class="clickable" onclick="detailLunas('${t}')">
     <td>${t}</td><td>${byDate[t]}</td></tr>`;
   });
+
   h+=`</tbody></table>`;
-
-  if(belum.length>0){
-    h+=`<h6 class="mt-3 clickable" onclick="detailBelum()">Belum Lunas</h6>`;
-  }
-
+  if(belum.length) h+=`<h6 class="mt-3 clickable" onclick="detailBelum()">Belum Lunas</h6>`;
   view.innerHTML=h;
 }
 
 /* ================= DETAIL ================= */
 function detailLunas(t){
+  lastDetailFn=()=>detailLunas(t);
   pushView(()=>openPetugas(currentPetugas));
   currentTitle=`Lunas_${t}`;
-  currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r) && r.tgl_lunas===t);
+  currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r)&&r.tgl_lunas===t);
   renderDetailTable(`Detail Lunas ${t}`,"success");
 }
 function detailBelum(){
+  lastDetailFn=detailBelum;
   pushView(()=>openPetugas(currentPetugas));
   currentTitle="Belum_Lunas";
   currentDetail=allData.filter(r=>r.petugas===currentPetugas && !isLunas(r));
   renderDetailTable("Detail Belum Lunas","secondary");
 }
 function detailGlobalLunas(t){
+  lastDetailFn=()=>detailGlobalLunas(t);
   pushView(openGlobal);
   currentTitle=`Global_Lunas_${t}`;
   currentDetail=allData.filter(r=>isLunas(r)&&r.tgl_lunas===t);
   renderDetailTable(`Detail Lunas ${t}`,"success");
 }
 function detailGlobalBelum(){
+  lastDetailFn=detailGlobalBelum;
   pushView(openGlobal);
   currentTitle="Global_Belum_Lunas";
   currentDetail=allData.filter(r=>!isLunas(r));
@@ -244,28 +213,24 @@ function renderDetailTable(title,color){
   <button class="btn btn-success btn-sm" onclick="exportExcel()">⬇ Export Excel</button>
   </div>
 
-  <div class="table-responsive mt-2">
-  <table class="table table-sm table-bordered">
+  <table class="table table-sm table-bordered mt-2">
   <thead class="table-${color}">
-  <tr>
-  <th>IDPEL</th><th>Nama</th><th>Alamat</th>
-  <th>Koded</th><th>Tarif</th><th>Daya</th><th>Rp</th>
-  </tr></thead><tbody>`;
+  <tr><th>IDPEL</th><th>Nama</th><th>Alamat</th><th>Koded</th><th>Tarif</th><th>Daya</th><th>Rp</th></tr>
+  </thead><tbody>`;
 
   currentDetail.forEach(r=>{
     h+=`<tr class="clickable" onclick="showCards()">
     <td>${r.idpel}</td><td>${r.nama}</td><td>${r.alamat}</td>
     <td>${r.koked}</td><td>${r.tarif}</td><td>${r.daya}</td>
-    <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td>
-    </tr>`;
+    <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td></tr>`;
   });
 
-  h+=`</tbody></table></div>`;
+  h+=`</tbody></table>`;
   view.innerHTML=h;
 }
 
 function showCards(){
-  pushView(()=>renderDetailTable(currentTitle,"secondary"));
+  if(lastDetailFn) pushView(lastDetailFn);
 
   let h=`<h6 class="text-primary">Detail Pelanggan</h6>`;
   currentDetail.forEach(r=>{
@@ -278,11 +243,9 @@ function showCards(){
         Tarif/Daya: ${r.tarif}/${r.daya}<br>
         <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b>
         <div class="mt-2">
-          <a class="btn btn-success btn-sm"
-             target="_blank"
-             href="https://wa.me/${r.no_hp || ""}?text=${waMessage(r)}">
-             📤 Kirim via WhatsApp
-          </a>
+          <a class="btn btn-success btn-sm" target="_blank"
+          href="https://wa.me/${r.no_hp||""}?text=${waMessage(r)}">
+          📤 Kirim via WhatsApp</a>
         </div>
       </div>
     </div>`;
@@ -290,26 +253,24 @@ function showCards(){
   view.innerHTML=h;
 }
 
+/* ================= EXPORT ================= */
 function exportExcel(){
-  let table=`<table><tr>
-  <th>IDPEL</th><th>Nama</th><th>Alamat</th>
-  <th>Koded</th><th>Tarif</th><th>Daya</th><th>Jumlah</th>
-  </tr>`;
+  let t="<table><tr><th>IDPEL</th><th>Nama</th><th>Alamat</th><th>Koded</th><th>Tarif</th><th>Daya</th><th>Jumlah</th></tr>";
   currentDetail.forEach(r=>{
-    table+=`<tr>
-    <td>${r.idpel}</td><td>${r.nama}</td><td>${r.alamat}</td>
-    <td>${r.koked}</td><td>${r.tarif}</td><td>${r.daya}</td>
-    <td>${r.jumlah}</td></tr>`;
+    t+=`<tr><td>${r.idpel}</td><td>${r.nama}</td><td>${r.alamat}</td>
+    <td>${r.koked}</td><td>${r.tarif}</td><td>${r.daya}</td><td>${r.jumlah}</td></tr>`;
   });
-  table+=`</table>`;
-  saveAs(new Blob([table],{type:"application/vnd.ms-excel"}),`${currentTitle}.xls`);
+  t+="</table>";
+  saveAs(new Blob([t],{type:"application/vnd.ms-excel"}),`${currentTitle}.xls`);
 }
 
-/* LOAD AWAL */
+/* LOAD */
 loadSheet("lembar1");
 </script>
 </body>
 </html>
+
+
 
 
 
