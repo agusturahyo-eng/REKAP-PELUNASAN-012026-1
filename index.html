@@ -8,6 +8,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 body{background:#f4f6f9}
@@ -20,169 +21,182 @@ tr:hover{background:#eef3ff}
 <div class="container my-3">
 
 <ul class="nav nav-tabs mb-3">
-  <li class="nav-item"><a class="nav-link active" onclick="loadSheet('lembar1')">Lembar 1</a></li>
-  <li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar2')">Lembar 2</a></li>
-  <li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar3')">Lembar 3</a></li>
+<li class="nav-item"><a class="nav-link active" onclick="loadSheet('lembar1')">Lembar 1</a></li>
+<li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar2')">Lembar 2</a></li>
+<li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar3')">Lembar 3</a></li>
 </ul>
 
 <h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
 
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
-<div id="view"></div>
 
+<div id="view"></div>
 </div>
 
 <script>
+/* ================= CONFIG ================= */
 const SHEETS={
-  lembar1:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"},
-  lembar2:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"},
-  lembar3:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
+lembar1:{url:"URL_CSV_1"},
+lembar2:{url:"URL_CSV_2"},
+lembar3:{url:"URL_CSV_3"}
 };
 
-let allData=[],currentPetugas="",currentDetail=[],history=[];
+let allData=[],history=[],currentDetail=[];
 
-const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="" && r.tgl_lunas!="-";
+/* ================= UTIL ================= */
+const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="";
 
-function pushView(fn){history.push(fn);backBtn.classList.remove("d-none")}
-backBtn.onclick=()=>{
-  history.pop();
-  if(history.length){history[history.length-1]()}
-  else{backBtn.classList.add("d-none");renderPetugas()}
-};
-
+/* ================= LOAD ================= */
 function loadSheet(k){
-  history=[];backBtn.classList.add("d-none");
-  fetch(SHEETS[k].url).then(r=>r.text()).then(csv=>{
-    allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
-    renderPetugas();
-  });
+history=[];
+backBtn.classList.add("d-none");
+fetch(SHEETS[k].url)
+.then(r=>r.text())
+.then(csv=>{
+allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
+renderPetugas();
+});
 }
 
-function waMessage(r){
-return encodeURIComponent(
-`PT. PLN (PERSERO)
-UP3 KLATEN
-ULP TULUNG
+/* ================= HISTORY ================= */
+function pushView(fn){
+history.push(fn);
+backBtn.classList.remove("d-none");
+}
+backBtn.onclick=()=>{
+history.pop();
+if(history.length) history[history.length-1]();
+else{
+backBtn.classList.add("d-none");
+renderPetugas();
+}
+};
 
-PEMBERITAHUAN PEMUTUSAN SEMENTARA
+/* ================= PETUGAS ================= */
+function renderPetugas(){
+let map={};
+allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
+
+let h=`<table class="table table-bordered">
+<thead class="table-dark">
+<tr><th>Petugas</th><th>Jumlah</th></tr>
+</thead><tbody>`;
+
+Object.keys(map).forEach(p=>{
+h+=`<tr class="clickable" onclick="openPetugas('${p}')">
+<td>${p}</td><td>${map[p]}</td></tr>`;
+});
+h+="</tbody></table>";
+view.innerHTML=h;
+}
+
+/* ================= PETUGAS DETAIL ================= */
+function openPetugas(p){
+pushView(renderPetugas);
+let data=allData.filter(r=>r.petugas===p && !isLunas(r));
+currentDetail=data;
+renderDetail();
+}
+
+/* ================= DETAIL ================= */
+function renderDetail(){
+let h=`<div class="table-responsive">
+<table class="table table-sm table-bordered">
+<thead class="table-secondary">
+<tr>
+<th>IDPEL</th><th>KOKED</th><th>Nama</th><th>Tarif/Daya</th><th>Rp</th>
+</tr></thead><tbody>`;
+
+currentDetail.forEach(r=>{
+h+=`<tr class="clickable" onclick="showCard('${r.idpel}')">
+<td>${r.idpel}</td>
+<td>${r.koked}</td>
+<td>${r.nama}</td>
+<td>${r.tarif}/${r.daya}</td>
+<td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td>
+</tr>`;
+});
+h+="</tbody></table></div>";
+view.innerHTML=h;
+}
+
+/* ================= CARD ================= */
+function showCard(id){
+pushView(renderDetail);
+let r=currentDetail.find(x=>x.idpel===id);
+
+let wa=encodeURIComponent(
+`PT. PLN (PERSERO) ULP TULUNG
 
 Nama : ${r.nama}
 IDPEL : ${r.idpel}
-Koded : ${r.koked}
-Tarif/Daya : ${r.tarif}/${r.daya}
+Koked : ${r.koked}
 Alamat : ${r.alamat}
+Tarif/Daya : ${r.tarif}/${r.daya}
 
-Jumlah Tunggakan:
-Rp ${(+r.jumlah).toLocaleString("id-ID")}
+Jumlah Tunggakan : Rp ${(+r.jumlah).toLocaleString("id-ID")}
 
-Mohon segera dilakukan pelunasan.
-Abaikan pesan ini jika sudah membayar.
+Mohon segera dilakukan pelunasan. Terima kasih.`
+);
 
-PLN ULP TULUNG`
-);}
+let h=`
+<div class="card">
+<div class="card-body">
+<b>${r.nama}</b><br>
+IDPEL : ${r.idpel}<br>
+Koked : ${r.koked}<br>
+Tarif/Daya : ${r.tarif}/${r.daya}<br>
+Alamat : ${r.alamat}<br>
+<b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b>
 
-function renderPetugas(){
-  history=[];backBtn.classList.add("d-none");
-  const map={};
-  allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
+<div class="mt-2">
+<a class="btn btn-success btn-sm" target="_blank"
+href="https://wa.me/${r.no_hp||""}?text=${wa}">📤 WhatsApp</a>
 
-  let h=`<table class="table table-bordered">
-  <thead class="table-dark"><tr><th>Petugas</th><th>Jumlah</th></tr></thead><tbody>
-  <tr class="table-primary clickable" onclick="openGlobal()">
-  <td><b>SEMUA PETUGAS</b></td><td><b>${allData.length}</b></td></tr>`;
-
-  Object.keys(map).forEach(p=>{
-    h+=`<tr class="clickable" onclick="openPetugas('${p}')">
-    <td>${p}</td><td>${map[p]}</td></tr>`;
-  });
-
-  view.innerHTML=h+"</tbody></table>";
+<button class="btn btn-danger btn-sm mt-1"
+onclick="cetakPDF(r)">🧾 PDF Surat</button>
+</div>
+</div>
+</div>`;
+view.innerHTML=h;
 }
 
-function openGlobal(){
-  pushView(renderPetugas);
-  const lunas=allData.filter(isLunas);
-  const byDate={};lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
+/* ================= PDF ================= */
+function cetakPDF(d){
+const {jsPDF}=window.jspdf;
+const pdf=new jsPDF({unit:"mm",format:[148,210]});
 
-  let h=`<h6 class="text-primary">Rekap Semua Petugas</h6>
-  <table class="table table-sm table-bordered mt-2">
-  <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
+let y=10;
+pdf.setFontSize(10);
+pdf.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY",10,y);y+=5;
+pdf.text("UP3 KLATEN",10,y);y+=5;
+pdf.text("ULP TULUNG",10,y);y+=8;
 
-  Object.keys(byDate).forEach(t=>{
-    h+=`<tr class="clickable" onclick="detailGlobal('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
-  });
+pdf.text("PEMBERITAHUAN PEMUTUSAN SEMENTARA",10,y);y+=6;
 
-  view.innerHTML=h+"</tbody></table>";
+pdf.text(`Nama : ${d.nama}`,10,y);y+=5;
+pdf.text(`IDPEL : ${d.idpel}    Koked : ${d.koked}`,10,y);y+=5;
+pdf.text(`Alamat : ${d.alamat}`,10,y);y+=5;
+pdf.text(`Tarif/Daya : ${d.tarif}/${d.daya}`,10,y);y+=5;
+pdf.text(`Jumlah Tunggakan : Rp ${(+d.jumlah).toLocaleString("id-ID")}`,10,y);y+=8;
+
+pdf.text(
+`Dengan ini diberitahukan bahwa aliran listrik
+diputus sementara karena belum dilakukan pelunasan.
+Penyambungan kembali dilakukan setelah kewajiban
+diselesaikan sesuai ketentuan PLN.`,
+10,y);
+
+pdf.save(`SURAT_${d.idpel}.pdf`);
 }
 
-function openPetugas(p){
-  pushView(renderPetugas);currentPetugas=p;
-  const data=allData.filter(r=>r.petugas===p && isLunas(r));
-  const byDate={};data.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
-
-  let h=`<h6 class="text-primary">Petugas: ${p}</h6>
-  <table class="table table-sm table-bordered mt-2">
-  <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
-
-  Object.keys(byDate).forEach(t=>{
-    h+=`<tr class="clickable" onclick="detailPetugas('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
-  });
-
-  view.innerHTML=h+"</tbody></table>";
-}
-
-function detailPetugas(t){
-  pushView(()=>openPetugas(currentPetugas));
-  currentDetail=allData.filter(r=>r.petugas===currentPetugas && r.tgl_lunas===t);
-  renderDetail();
-}
-
-function detailGlobal(t){
-  pushView(openGlobal);
-  currentDetail=allData.filter(r=>r.tgl_lunas===t);
-  renderDetail();
-}
-
-function renderDetail(){
-  let h=`<table class="table table-sm table-bordered">
-  <thead class="table-secondary">
-  <tr><th>IDPEL</th><th>Koded</th><th>Nama</th><th>Tarif/Daya</th><th>Rp</th></tr>
-  </thead><tbody>`;
-
-  currentDetail.forEach(r=>{
-    h+=`<tr class="clickable" onclick="showCards()">
-    <td>${r.idpel}</td><td>${r.koked}</td><td>${r.nama}</td>
-    <td>${r.tarif}/${r.daya}</td>
-    <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td></tr>`;
-  });
-
-  view.innerHTML=h+"</tbody></table>";
-}
-
-function showCards(){
-  pushView(renderDetail);
-  let h="";
-  currentDetail.forEach(r=>{
-    h+=`<div class="card mb-2"><div class="card-body p-2">
-    <b>${r.nama}</b><br>
-    IDPEL: ${r.idpel}<br>
-    Koded: ${r.koked}<br>
-    Tarif/Daya: ${r.tarif}/${r.daya}<br>
-    ${r.alamat}<br>
-    <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b><br>
-    <a class="btn btn-success btn-sm mt-2"
-    target="_blank"
-    href="https://wa.me/${r.no_hp||""}?text=${waMessage(r)}">
-    📤 Kirim via WhatsApp</a>
-    </div></div>`;
-  });
-  view.innerHTML=h;
-}
-
+/* ================= INIT ================= */
 loadSheet("lembar1");
 </script>
+
 </body>
 </html>
+
 
 
 
