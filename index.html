@@ -20,9 +20,9 @@ tr:hover{background:#eef3ff}
 <div class="container my-3">
 
 <ul class="nav nav-tabs mb-3">
-  <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a></li>
-  <li class="nav-item"><a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a></li>
-  <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
+  <li class="nav-item"><a class="nav-link active" onclick="loadSheet('lembar1')">Lembar 1</a></li>
+  <li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar2')">Lembar 2</a></li>
+  <li class="nav-item"><a class="nav-link" onclick="loadSheet('lembar3')">Lembar 3</a></li>
 </ul>
 
 <h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
@@ -39,36 +39,50 @@ const SHEETS={
   lembar3:{url:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
 };
 
-let allData=[], currentPetugas=null, currentDetail=[], currentTitle="";
-let history=[];
+let allData=[],currentPetugas="",currentDetail=[],history=[];
 
 const isLunas=r=>r.tgl_lunas && r.tgl_lunas.trim()!=="" && r.tgl_lunas!="-";
 
-function loadSheet(key){
-  history=[];
-  backBtn.classList.add("d-none");
-  document.querySelectorAll(".nav-link").forEach(t=>t.classList.remove("active"));
-  document.getElementById("tab-"+key).classList.add("active");
+function pushView(fn){history.push(fn);backBtn.classList.remove("d-none")}
+backBtn.onclick=()=>{
+  history.pop();
+  if(history.length){history[history.length-1]()}
+  else{backBtn.classList.add("d-none");renderPetugas()}
+};
 
-  fetch(SHEETS[key].url).then(r=>r.text()).then(csv=>{
+function loadSheet(k){
+  history=[];backBtn.classList.add("d-none");
+  fetch(SHEETS[k].url).then(r=>r.text()).then(csv=>{
     allData=Papa.parse(csv,{header:true,skipEmptyLines:true}).data;
     renderPetugas();
   });
 }
 
-function pushView(fn){
-  history.push(fn);
-  backBtn.classList.remove("d-none");
-}
-backBtn.onclick=()=>{
-  history.pop();
-  if(history.length) history.at(-1)();
-  else{ backBtn.classList.add("d-none"); renderPetugas(); }
-};
+function waMessage(r){
+return encodeURIComponent(
+`PT. PLN (PERSERO)
+UP3 KLATEN
+ULP TULUNG
+
+PEMBERITAHUAN PEMUTUSAN SEMENTARA
+
+Nama : ${r.nama}
+IDPEL : ${r.idpel}
+Koded : ${r.koked}
+Tarif/Daya : ${r.tarif}/${r.daya}
+Alamat : ${r.alamat}
+
+Jumlah Tunggakan:
+Rp ${(+r.jumlah).toLocaleString("id-ID")}
+
+Mohon segera dilakukan pelunasan.
+Abaikan pesan ini jika sudah membayar.
+
+PLN ULP TULUNG`
+);}
 
 function renderPetugas(){
-  history=[];
-  backBtn.classList.add("d-none");
+  history=[];backBtn.classList.add("d-none");
   const map={};
   allData.forEach(r=>map[r.petugas]=(map[r.petugas]||0)+1);
 
@@ -78,101 +92,88 @@ function renderPetugas(){
   <td><b>SEMUA PETUGAS</b></td><td><b>${allData.length}</b></td></tr>`;
 
   Object.keys(map).forEach(p=>{
-    h+=`<tr class="clickable" onclick="openPetugas('${p}')"><td>${p}</td><td>${map[p]}</td></tr>`;
+    h+=`<tr class="clickable" onclick="openPetugas('${p}')">
+    <td>${p}</td><td>${map[p]}</td></tr>`;
   });
-  h+=`</tbody></table>`;
-  view.innerHTML=h;
+
+  view.innerHTML=h+"</tbody></table>";
 }
 
 function openGlobal(){
   pushView(renderPetugas);
   const lunas=allData.filter(isLunas);
-  const byDate={};
-  lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
+  const byDate={};lunas.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
   let h=`<h6 class="text-primary">Rekap Semua Petugas</h6>
   <table class="table table-sm table-bordered mt-2">
   <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
 
   Object.keys(byDate).forEach(t=>{
-    h+=`<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
+    h+=`<tr class="clickable" onclick="detailGlobal('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
   });
-  h+=`</tbody></table>`;
-  view.innerHTML=h;
+
+  view.innerHTML=h+"</tbody></table>";
 }
 
 function openPetugas(p){
-  pushView(renderPetugas);
-  currentPetugas=p;
+  pushView(renderPetugas);currentPetugas=p;
   const data=allData.filter(r=>r.petugas===p && isLunas(r));
-  const byDate={};
-  data.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
+  const byDate={};data.forEach(r=>byDate[r.tgl_lunas]=(byDate[r.tgl_lunas]||0)+1);
 
   let h=`<h6 class="text-primary">Petugas: ${p}</h6>
   <table class="table table-sm table-bordered mt-2">
   <thead class="table-success"><tr><th>Tanggal</th><th>Jumlah</th></tr></thead><tbody>`;
 
   Object.keys(byDate).forEach(t=>{
-    h+=`<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
+    h+=`<tr class="clickable" onclick="detailPetugas('${t}')"><td>${t}</td><td>${byDate[t]}</td></tr>`;
   });
-  h+=`</tbody></table>`;
-  view.innerHTML=h;
+
+  view.innerHTML=h+"</tbody></table>";
 }
 
-function detailLunas(t){
+function detailPetugas(t){
   pushView(()=>openPetugas(currentPetugas));
-  currentTitle=`Lunas_${t}`;
-  currentDetail=allData.filter(r=>r.petugas===currentPetugas && isLunas(r) && r.tgl_lunas===t);
-  renderDetailTable(`Detail Lunas ${t}`);
-}
-function detailGlobalLunas(t){
-  pushView(openGlobal);
-  currentTitle=`Global_Lunas_${t}`;
-  currentDetail=allData.filter(r=>isLunas(r)&&r.tgl_lunas===t);
-  renderDetailTable(`Detail Lunas ${t}`);
+  currentDetail=allData.filter(r=>r.petugas===currentPetugas && r.tgl_lunas===t);
+  renderDetail();
 }
 
-function renderDetailTable(title){
-  let h=`<h6 class="text-success">${title}</h6>
-  <div class="table-responsive mt-2">
-  <table class="table table-sm table-bordered">
-  <thead class="table-success">
-  <tr>
-    <th>IDPEL</th><th>Koded</th><th>Nama</th><th>Alamat</th>
-    <th>Tarif/Daya</th><th>Rp</th>
-  </tr></thead><tbody>`;
+function detailGlobal(t){
+  pushView(openGlobal);
+  currentDetail=allData.filter(r=>r.tgl_lunas===t);
+  renderDetail();
+}
+
+function renderDetail(){
+  let h=`<table class="table table-sm table-bordered">
+  <thead class="table-secondary">
+  <tr><th>IDPEL</th><th>Koded</th><th>Nama</th><th>Tarif/Daya</th><th>Rp</th></tr>
+  </thead><tbody>`;
 
   currentDetail.forEach(r=>{
     h+=`<tr class="clickable" onclick="showCards()">
-      <td>${r.idpel}</td>
-      <td>${r.koked||"-"}</td>
-      <td>${r.nama}</td>
-      <td>${r.alamat}</td>
-      <td>${r.tarif}/${r.daya}</td>
-      <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td>
-    </tr>`;
+    <td>${r.idpel}</td><td>${r.koked}</td><td>${r.nama}</td>
+    <td>${r.tarif}/${r.daya}</td>
+    <td class="text-end">${(+r.jumlah).toLocaleString("id-ID")}</td></tr>`;
   });
-  h+=`</tbody></table></div>`;
-  view.innerHTML=h;
+
+  view.innerHTML=h+"</tbody></table>";
 }
 
 function showCards(){
-  pushView(()=>renderDetailTable(currentTitle));
-  let h=`<h6 class="text-primary">Detail Pelanggan</h6>`;
+  pushView(renderDetail);
+  let h="";
   currentDetail.forEach(r=>{
     h+=`<div class="card mb-2"><div class="card-body p-2">
-      <b>${r.nama}</b><br>
-      IDPEL : <b>${r.idpel}</b><br>
-      Koded : <b>${r.koked||"-"}</b><br>
-      Tarif/Daya : ${r.tarif}/${r.daya}<br>
-      ${r.alamat}<br>
-      <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b>
-      <div class="mt-2">
-        <a class="btn btn-success btn-sm" target="_blank"
-           href="https://wa.me/${r.no_hp||""}?text=${encodeURIComponent('IDPEL '+r.idpel)}">
-           📤 Kirim via WhatsApp
-        </a>
-      </div>
+    <b>${r.nama}</b><br>
+    IDPEL: ${r.idpel}<br>
+    Koded: ${r.koked}<br>
+    Tarif/Daya: ${r.tarif}/${r.daya}<br>
+    ${r.alamat}<br>
+    <b>Rp ${(+r.jumlah).toLocaleString("id-ID")}</b><br>
+    <a class="btn btn-success btn-sm mt-2"
+    target="_blank"
+    href="https://wa.me/${r.no_hp||""}?text=${waMessage(r)}">
+    📤 Kirim via WhatsApp</a>
     </div></div>`;
   });
   view.innerHTML=h;
@@ -182,6 +183,7 @@ loadSheet("lembar1");
 </script>
 </body>
 </html>
+
 
 
 
