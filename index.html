@@ -1,20 +1,8 @@
-
-
-Berikut adalah script lengkap yang sudah diperbarui.
-
-**Perubahan yang dilakukan:**
-1.  **Isi WhatsApp & PDF Disesuaikan:** Saya telah menyesuaikan teks di dalam fungsi `getFullText` (untuk WhatsApp) dan `createPDF` (untuk PDF) agar **persis** sama dengan contoh teks yang Anda berikan, termasuk tanda baca, spasi, dan format tanggalnya.
-2.  **Tab Invoice:** Tetap menyertakan tab Invoice seperti permintaan sebelumnya.
-3.  **Struktur Tetap:** Logika sorting, searching, dan navigasi tidak diubah agar script tetap berjalan lancar.
-
-Silakan simpan kode ini sebagai file `.html`.
-
-```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Rekap Tunggakan ULP Tulung & Invoice</title>
+<title>Rekap Tunggakan ULP Tulung</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -27,9 +15,6 @@ tr:hover{background:#eef3ff}
 .table-primary th:hover { background-color: #0d6efd !important; color: white; }
 .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
-/* Styling tambahan untuk status badge */
-.badge-lunas { background-color: #198754; color: white; }
-.badge-belum { background-color: #dc3545; color: white; }
 </style>
 </head>
 <body>
@@ -38,9 +23,8 @@ tr:hover{background:#eef3ff}
   <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a></li>
   <li class="nav-item"><a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a></li>
   <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
-  <li class="nav-item"><a class="nav-link" id="tab-invoice" onclick="loadSheet('invoice')">Invoice</a></li>
 </ul>
-<h4 class="text-center text-primary mb-3" id="mainTitle">⚡ Rekap Tunggakan ULP Tulung</h4>
+<h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
 <div id="view"></div>
 </div>
@@ -50,8 +34,7 @@ const { jsPDF } = window.jspdf;
 const SHEETS = {
   lembar1: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"},
   lembar2: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"},
-  lembar3: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"},
-  invoice: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=577428656&single=true&output=csv"}
+  lembar3: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
 };
 
 let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua", currentSheet = "lembar1";
@@ -66,8 +49,7 @@ const parseIDR = (val) => {
 const parseDate = (str) => {
   if (!str || str === "-") return new Date(0);
   const parts = str.split('-');
-  if(parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
-  return new Date(str);
+  return new Date(parts[2], parts[1] - 1, parts[0]);
 };
 
 const isLunas = r => r.tgl_lunas && r.tgl_lunas.trim() !== "" && r.tgl_lunas !== "-";
@@ -76,224 +58,100 @@ function loadSheet(k) {
   currentSheet = k; historyStack = []; currentPetugas = "Semua"; 
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + k).classList.add("active");
-  
-  const titleEl = document.getElementById("mainTitle");
-  titleEl.innerText = (k === 'invoice') ? "🧾 Data Invoice ULP Tulung" : "⚡ Rekap Tunggakan ULP Tulung";
-
   fetch(SHEETS[k].url).then(r => r.text()).then(csv => {
     allData = Papa.parse(csv, {header: true, skipEmptyLines: true}).data;
-    
-    if (k === 'invoice') {
-      renderInvoice();
-    } else {
-      renderPetugas();
-    }
+    renderPetugas();
   });
 }
 
 function pushView(fn) { historyStack.push(fn); backBtn.classList.remove("d-none"); }
 backBtn.onclick = () => {
   if (historyStack.length > 0) historyStack.pop()();
-  if (historyStack.length === 0) { 
-    backBtn.classList.add("d-none"); 
-    if(currentSheet === 'invoice') renderInvoice();
-    else renderPetugas();
-  }
+  if (historyStack.length === 0) { backBtn.classList.add("d-none"); renderPetugas(); }
 };
 
-/* ================= TEKS PERSIS SESUAI REQUEST (WA & PDF) ================= */
+/* ================= TEKS PERSIS TUL VI-01 DENGAN BARIS BARU WA ================= */
 const getFullText = (r, type) => {
   const date = new Date();
   const nBulanFull = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
   const nBulanShort = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOP", "DES"];
-  
   const blnIni = `${nBulanShort[date.getMonth()]}-${date.getFullYear()}`;
   const blnLalu = date.getMonth() === 0 ? `DES-${date.getFullYear()-1}` : `${nBulanShort[date.getMonth()-1]}-${date.getFullYear()}`;
-  
-  // Logika periode sesuai request
-  let periode = "";
-  if (currentSheet === 'lembar1') {
-    periode = `${blnIni} s/d ${blnIni} (1 LEMBAR)`;
-  } else {
-    // Untuk lembar 2 dan 3 menggunakan format 2 lembar
-    periode = `${blnLalu} s/d ${blnIni} (2 LEMBAR)`;
-  }
+  let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni} (1 LEMBAR)` : `${blnLalu} s/d ${blnIni} (2 LEMBAR)`;
 
-  const tglSekarang = `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}`;
-
-  // Body text sesuai request
   const body1 = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.";
   const body2 = "Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi di tempat penerimaan pembayaran rekening listrik, kantor pos, atau bank yang ditunjuk oleh PLN.";
   const body3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar, dan penyambungan kembali dapat dilaksanakan setelah Saudara menyelesaikan Biaya Penyambungan yang diperlakukan sebagai sambungan baru serta tetap diwajibkan membayar tagihan listrik yang belum dilunasi beserta dendanya.";
 
   if (type === 'WA') {
-    // Format WhatsApp persis
+    // Menambahkan baris baru menggunakan \n agar rapi di WA
     return encodeURIComponent("*PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY*\n" +
       "*UP3 KLATEN*\n" +
       "*ULP TULUNG*\n\n" +
       "*PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK*\n" +
       "==========================================\n" +
-      "Kepada Yth.\n" +
-      "Nama : " + r.nama + "\n" +
-      "ID. Pelanggan : " + r.idpel + "\n" +
-      "Alamat : " + (r.alamat || '-') + "\n" +
-      "Tarip / Daya : " + r.tarif + " / " + r.daya + "\n" +
-      "Koked : " + r.koked + "\n\n" +
-      "Rekening : " + periode + "\n" +
-      "Rp. : " + parseIDR(r.rptag).toLocaleString("id-ID") + "\n" +
-      "Jumlah Biaya Keterlambatan s.d bulan : " + blnIni + "\n" +
-      "Rp. : " + parseIDR(r.rpbk).toLocaleString("id-ID") + "\n\n" +
-      "Jumlah Tunggakan (belum termasuk biaya Administrasi)\n" +
-      "Rp. : " + parseIDR(r.jumlah).toLocaleString("id-ID") + "\n\n" +
+      "*Kepada Yth.*\n" +
+      "*Nama* : " + r.nama + "\n" +
+      "*ID. Pelanggan* : " + r.idpel + "\n" +
+      "*Alamat* : " + (r.alamat || '-') + "\n" +
+      "*Tarip / Daya* : " + r.tarif + " / " + r.daya + "\n" +
+      "*Koked* : " + r.koked + "\n\n" +
+      "*Rekening* : " + periode + "\n" +
+      "*Rp.* : " + parseIDR(r.rptag).toLocaleString("id-ID") + "\n" +
+      "*Jumlah Biaya Keterlambatan s.d bulan : " + blnIni + "*\n" +
+      "*Rp.* : " + parseIDR(r.rpbk).toLocaleString("id-ID") + "\n\n" +
+      "*Jumlah Tunggakan (belum termasuk biaya Administrasi)*\n" +
+      "*Rp.* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" +
       body1 + "\n\n" +
       body2 + "\n\n" +
       body3 + "\n\n" +
-      "UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS\n\n" +
-      "TULUNG, " + tglSekarang + "\n" +
-      "MANAGER\n" +
-      "MARTONO AJI PRABOWO\n\n" +
-      "ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN");
+      "*UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS*\n\n" +
+      "TULUNG, " + date.getDate() + " " + nBulanFull[date.getMonth()] + " " + date.getFullYear() + "\n" +
+      "*MANAGER*\n" +
+      "*MARTONO AJI PRABOWO*\n\n" +
+      "_ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN_");
   }
-
-  // Return object untuk PDF
-  return { periode, blnIni, body1, body2, body3, tgl: tglSekarang };
+  return { periode, blnIni, body1, body2, body3, tgl: `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}` };
 };
 
 function createPDF(r) {
   const doc = new jsPDF();
   const info = getFullText(r, 'PDF');
-  
-  // Header PDF
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 105, 15, {align: "center"});
-  doc.text("UP3 KLATEN", 105, 20, {align: "center"});
-  doc.text("ULP TULUNG", 105, 25, {align: "center"});
-  
-  doc.setFontSize(11);
-  doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA", 105, 35, {align: "center"});
-  doc.text("SAMBUNGAN TENAGA LISTRIK", 105, 40, {align: "center"});
-  
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.text("==========================================", 105, 45, {align: "center"});
-  
-  let y = 55;
-  doc.text("Kepada Yth.", 15, y);
-  y += 6;
-  doc.text(`Nama : ${r.nama}`, 15, y);
-  y += 6;
-  doc.text(`ID. Pelanggan : ${r.idpel}`, 15, y);
-  y += 6;
-  doc.text(`Alamat : ${r.alamat || '-'}`, 15, y);
-  y += 6;
-  doc.text(`Tarip / Daya : ${r.tarif} / ${r.daya}`, 15, y);
-  y += 6;
-  doc.text(`Koked : ${r.koked}`, 15, y);
-  
-  y += 10;
-  doc.text(`Rekening : ${info.periode}`, 15, y);
-  y += 6;
-  doc.text(`Rp. : ${parseIDR(r.rptag).toLocaleString("id-ID")}`, 15, y);
-  y += 6;
-  doc.text(`Jumlah Biaya Keterlambatan s.d bulan : ${info.blnIni}`, 15, y);
-  y += 6;
-  doc.text(`Rp. : ${parseIDR(r.rpbk).toLocaleString("id-ID")}`, 15, y);
-  
-  y += 8;
-  doc.setFont(undefined, 'bold');
-  doc.text(`Jumlah Tunggakan (belum termasuk biaya Administrasi)`, 15, y);
-  y += 6;
-  doc.text(`Rp. : ${parseIDR(r.jumlah).toLocaleString("id-ID")}`, 15, y);
-  
-  y += 10;
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(8.5);
-  let p1 = doc.splitTextToSize(info.body1, 180); doc.text(p1, 15, y); y += (p1.length * 4) + 6;
-  let p2 = doc.splitTextToSize(info.body2, 180); doc.text(p2, 15, y); y += (p2.length * 4) + 6;
-  let p3 = doc.splitTextToSize(info.body3, 180); doc.text(p3, 15, y);
-  
-  y += (p3.length * 4) + 10;
-  doc.setFont(undefined, 'bold');
-  doc.text("UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS", 105, y, {align: "center"});
-  
-  y += 15;
-  doc.text(`TULUNG, ${info.tgl}`, 105, y, {align: "center"});
-  y += 6;
-  doc.text("MANAGER", 105, y, {align: "center"});
-  y += 5;
-  doc.setFontSize(9);
-  doc.text("MARTONO AJI PRABOWO", 105, y, {align: "center"});
-  
-  y += 20;
   doc.setFontSize(8);
-  doc.setFont(undefined, 'normal');
-  doc.text("ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN", 105, y, {align: "center"});
-  
+  doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 15, 15);
+  doc.text("UP3 KLATEN", 15, 19); doc.text("ULP TULUNG", 15, 23); doc.text("NO. TUL :", 150, 19);
+  doc.setFont(undefined, 'bold'); doc.setFontSize(10);
+  doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK", 105, 33, {align: "center"});
+  doc.setFont(undefined, 'normal'); doc.setFontSize(9);
+  doc.text("===================================================================================", 105, 36, {align: "center"});
+  doc.text("Kepada Yth.", 15, 45);
+  doc.text(`Nama             : ${r.nama}`, 15, 50);
+  doc.text(`ID. Pelanggan    : ${r.idpel}`, 15, 55);
+  doc.text(`Alamat           : ${r.alamat || '-'}`, 15, 60);
+  doc.text(`Tarip / Daya     : ${r.tarif} / ${r.daya}`, 15, 65);
+  doc.text(`Koked : ${r.koked}`, 120, 55);
+  doc.text(`Rekening : ${info.periode}`, 15, 80);
+  doc.text(`Rp. :`, 150, 80); doc.text(parseIDR(r.rptag).toLocaleString("id-ID"), 190, 80, {align: "right"});
+  doc.text(`Jumlah Biaya Keterlambatan s.d bulan : ${info.blnIni}`, 15, 85);
+  doc.text(`Rp. :`, 150, 85); doc.text(parseIDR(r.rpbk).toLocaleString("id-ID"), 190, 85, {align: "right"});
+  doc.setFont(undefined, 'bold');
+  doc.text(`Jumlah Tunggakan (belum termasuk biaya Administrasi)`, 15, 92);
+  doc.text(`Rp. :`, 150, 92); doc.text(parseIDR(r.jumlah).toLocaleString("id-ID"), 190, 92, {align: "right"});
+  doc.setFont(undefined, 'normal'); doc.setFontSize(8.5);
+  let p1 = doc.splitTextToSize(info.body1, 180); doc.text(p1, 15, 102);
+  let p2 = doc.splitTextToSize(info.body2, 180); doc.text(p2, 15, 114);
+  let p3 = doc.splitTextToSize(info.body3, 180); doc.text(p3, 15, 130);
+  doc.setFont(undefined, 'bold');
+  doc.text("UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS", 15, 150);
+  doc.text(`TULUNG, ${info.tgl}`, 145, 160);
+  doc.text("MANAGER", 155, 165);
+  doc.text("MARTONO AJI PRABOWO", 145, 190);
+  doc.setFontSize(7); doc.setFont(undefined, 'normal');
+  doc.text("A5 TUL VI-01/PETUGAS PEMUTUS : ..................................", 15, 210);
   doc.save(`TUL_${r.idpel}.pdf`);
 }
 
-/* ================= FITUR INVOICE BARU ================= */
-function renderInvoice() {
-  sortState = { key: null, asc: true };
-  let h = `
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h6 class="m-0">Data Invoice</h6>
-    <button class="btn btn-success btn-sm" onclick="exportCurrentView('Invoice')">Export Excel</button>
-  </div>
-  <div class="mb-2"><input id="searchInv" class="form-control form-control-sm" placeholder="Cari ID Pelanggan, Nama, atau No. Invoice..."></div>
-  <div id="tableAreaInv"></div>`;
-  view.innerHTML = h;
-
-  document.getElementById("searchInv").oninput = e => {
-    const t = e.target.value.toLowerCase();
-    const filtered = allData.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(t)));
-    drawInvoiceTable(filtered);
-  };
-  drawInvoiceTable(allData);
-}
-
-function drawInvoiceTable(data) {
-  window.triggerSortInv = (key) => {
-    if (sortState.key === key) sortState.asc = !sortState.asc; else { sortState.key = key; sortState.asc = true; }
-    const sorted = [...data].sort((a, b) => {
-      let v1 = a[key] || "", v2 = b[key] || "";
-      return sortState.asc ? String(v1).localeCompare(String(v2), undefined, {numeric: true}) : String(v2).localeCompare(String(v1), undefined, {numeric: true});
-    });
-    drawInvoiceTable(sorted);
-  };
-  
-  const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-  const headers = data.length > 0 ? Object.keys(data[0]) : [];
-  
-  let tableHtml = `<div class="table-responsive"><table class="table table-sm table-bordered" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr>`;
-  headers.forEach(key => {
-    let label = key.toUpperCase().replace(/_/G, ' ');
-    tableHtml += `<th class="clickable" onclick="triggerSortInv('${key}')">${label}${icon(key)}</th>`;
-  });
-  tableHtml += `</tr></thead><tbody>`;
-
-  data.forEach(r => {
-    tableHtml += `<tr>`;
-    headers.forEach(key => {
-      let val = r[key] || "";
-      if(key.toLowerCase().includes('status')) {
-         let badgeClass = val.toLowerCase().includes('lunas') ? 'badge-lunas' : 'badge-belum';
-         val = `<span class="badge ${badgeClass}">${val}</span>`;
-      } else if (key.toLowerCase().includes('rp') || key.toLowerCase().includes('jumlah') || key.toLowerCase().includes('biaya')) {
-         let num = parseIDR(val);
-         if(num > 0) val = `<span class="text-end d-block">${num.toLocaleString("id-ID")}</span>`;
-      }
-      tableHtml += `<td>${val}</td>`;
-    });
-    tableHtml += `</tr>`;
-  });
-
-  tableHtml += `</tbody></table></div>`;
-  document.getElementById("tableAreaInv").innerHTML = tableHtml;
-}
-
-/* ================= ALUR DATA TUNGGAKAN ================= */
+/* ================= ALUR DATA ================= */
 function renderPetugas() {
   const map = {}; let totalRp = 0;
   allData.forEach(r => {
@@ -334,7 +192,7 @@ function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetai
 
 function renderDetail() {
   sortState = { key: null, asc: true };
-  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari..."><button class="btn btn-success btn-sm" onclick="exportCurrentView('Rekap')">XLSX</button></div><div id="tableArea"></div>`;
+  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari..."><button class="btn btn-success btn-sm" onclick="exportExcel()">XLSX</button></div><div id="tableArea"></div>`;
   document.getElementById("search").oninput = e => {
     const t = e.target.value.toLowerCase();
     drawTable(currentDetail.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(t))));
@@ -378,18 +236,14 @@ function showCardsByData(id) {
   if(id) setTimeout(() => document.getElementById(`card-${id}`).scrollIntoView({behavior:'smooth', block:'center'}), 100);
 }
 
-function exportCurrentView(filenamePrefix) {
-  let dataToExport = currentSheet === 'invoice' ? allData : currentDetail;
-  let fileName = currentSheet === 'invoice' ? "Invoice_ULP_Tulung.xlsx" : `Rekap_${currentTitle}.xlsx`;
-
-  const ws = XLSX.utils.json_to_sheet(dataToExport), wb = XLSX.utils.book_new();
+function exportExcel() {
+  const ws = XLSX.utils.json_to_sheet(currentDetail), wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Data");
-  XLSX.writeFile(wb, fileName);
+  XLSX.writeFile(wb, `Rekap_${currentTitle}.xlsx`);
 }
 
 loadSheet("lembar1");
 </script>
 </body>
 </html>
-```
 
