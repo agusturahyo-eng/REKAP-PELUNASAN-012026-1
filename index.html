@@ -1,12 +1,13 @@
-Tentu, ini adalah script lengkap yang sudah saya tambahkan tab **Invoice**.
 
-### Perubahan yang dilakukan:
-1.  **Tab Baru**: Menambahkan tab "Invoice" di bagian navigasi atas.
-2.  **Data Source**: Menambahkan konfigurasi URL untuk data Invoice (menggunakan format CSV agar mudah dibaca oleh script, sama seperti tab lainnya).
-3.  **Logika Render**: Menambahkan fungsi khusus `renderInvoice` untuk menampilkan data invoice dalam bentuk tabel yang bisa dicari, diurutkan, dan diedit statusnya (simulasi).
-4.  **Perbaikan Link**: Link yang Anda berikan tadi formatnya `pubhtml`, saya ubah menjadi `pubcsv` agar script bisa membaca datanya secara otomatis.
 
-Silakan salin seluruh kode di bawah ini dan simpan sebagai file `.html`.
+Berikut adalah script lengkap yang sudah diperbarui.
+
+**Perubahan yang dilakukan:**
+1.  **Isi WhatsApp & PDF Disesuaikan:** Saya telah menyesuaikan teks di dalam fungsi `getFullText` (untuk WhatsApp) dan `createPDF` (untuk PDF) agar **persis** sama dengan contoh teks yang Anda berikan, termasuk tanda baca, spasi, dan format tanggalnya.
+2.  **Tab Invoice:** Tetap menyertakan tab Invoice seperti permintaan sebelumnya.
+3.  **Struktur Tetap:** Logika sorting, searching, dan navigasi tidak diubah agar script tetap berjalan lancar.
+
+Silakan simpan kode ini sebagai file `.html`.
 
 ```html
 <!DOCTYPE html>
@@ -65,7 +66,6 @@ const parseIDR = (val) => {
 const parseDate = (str) => {
   if (!str || str === "-") return new Date(0);
   const parts = str.split('-');
-  // Handle format DD-MM-YYYY
   if(parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
   return new Date(str);
 };
@@ -77,7 +77,6 @@ function loadSheet(k) {
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + k).classList.add("active");
   
-  // Ubah judul halaman
   const titleEl = document.getElementById("mainTitle");
   titleEl.innerText = (k === 'invoice') ? "🧾 Data Invoice ULP Tulung" : "⚡ Rekap Tunggakan ULP Tulung";
 
@@ -102,90 +101,141 @@ backBtn.onclick = () => {
   }
 };
 
-/* ================= TEKS PERSIS TUL VI-01 DENGAN BARIS BARU WA ================= */
+/* ================= TEKS PERSIS SESUAI REQUEST (WA & PDF) ================= */
 const getFullText = (r, type) => {
   const date = new Date();
   const nBulanFull = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
   const nBulanShort = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOP", "DES"];
+  
   const blnIni = `${nBulanShort[date.getMonth()]}-${date.getFullYear()}`;
   const blnLalu = date.getMonth() === 0 ? `DES-${date.getFullYear()-1}` : `${nBulanShort[date.getMonth()-1]}-${date.getFullYear()}`;
-  let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni} (1 LEMBAR)` : `${blnLalu} s/d ${blnIni} (2 LEMBAR)`;
+  
+  // Logika periode sesuai request
+  let periode = "";
+  if (currentSheet === 'lembar1') {
+    periode = `${blnIni} s/d ${blnIni} (1 LEMBAR)`;
+  } else {
+    // Untuk lembar 2 dan 3 menggunakan format 2 lembar
+    periode = `${blnLalu} s/d ${blnIni} (2 LEMBAR)`;
+  }
 
+  const tglSekarang = `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}`;
+
+  // Body text sesuai request
   const body1 = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.";
   const body2 = "Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi di tempat penerimaan pembayaran rekening listrik, kantor pos, atau bank yang ditunjuk oleh PLN.";
   const body3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar, dan penyambungan kembali dapat dilaksanakan setelah Saudara menyelesaikan Biaya Penyambungan yang diperlakukan sebagai sambungan baru serta tetap diwajibkan membayar tagihan listrik yang belum dilunasi beserta dendanya.";
 
   if (type === 'WA') {
+    // Format WhatsApp persis
     return encodeURIComponent("*PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY*\n" +
       "*UP3 KLATEN*\n" +
       "*ULP TULUNG*\n\n" +
       "*PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK*\n" +
       "==========================================\n" +
-      "*Kepada Yth.*\n" +
-      "*Nama* : " + r.nama + "\n" +
-      "*ID. Pelanggan* : " + r.idpel + "\n" +
-      "*Alamat* : " + (r.alamat || '-') + "\n" +
-      "*Tarip / Daya* : " + r.tarif + " / " + r.daya + "\n" +
-      "*Koked* : " + r.koked + "\n\n" +
-      "*Rekening* : " + periode + "\n" +
-      "*Rp.* : " + parseIDR(r.rptag).toLocaleString("id-ID") + "\n" +
-      "*Jumlah Biaya Keterlambatan s.d bulan : " + blnIni + "*\n" +
-      "*Rp.* : " + parseIDR(r.rpbk).toLocaleString("id-ID") + "\n\n" +
-      "*Jumlah Tunggakan (belum termasuk biaya Administrasi)*\n" +
-      "*Rp.* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" +
+      "Kepada Yth.\n" +
+      "Nama : " + r.nama + "\n" +
+      "ID. Pelanggan : " + r.idpel + "\n" +
+      "Alamat : " + (r.alamat || '-') + "\n" +
+      "Tarip / Daya : " + r.tarif + " / " + r.daya + "\n" +
+      "Koked : " + r.koked + "\n\n" +
+      "Rekening : " + periode + "\n" +
+      "Rp. : " + parseIDR(r.rptag).toLocaleString("id-ID") + "\n" +
+      "Jumlah Biaya Keterlambatan s.d bulan : " + blnIni + "\n" +
+      "Rp. : " + parseIDR(r.rpbk).toLocaleString("id-ID") + "\n\n" +
+      "Jumlah Tunggakan (belum termasuk biaya Administrasi)\n" +
+      "Rp. : " + parseIDR(r.jumlah).toLocaleString("id-ID") + "\n\n" +
       body1 + "\n\n" +
       body2 + "\n\n" +
       body3 + "\n\n" +
-      "*UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS*\n\n" +
-      "TULUNG, " + date.getDate() + " " + nBulanFull[date.getMonth()] + " " + date.getFullYear() + "\n" +
-      "*MANAGER*\n" +
-      "*MARTONO AJI PRABOWO*\n\n" +
-      "_ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN_");
+      "UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS\n\n" +
+      "TULUNG, " + tglSekarang + "\n" +
+      "MANAGER\n" +
+      "MARTONO AJI PRABOWO\n\n" +
+      "ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN");
   }
-  return { periode, blnIni, body1, body2, body3, tgl: `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}` };
+
+  // Return object untuk PDF
+  return { periode, blnIni, body1, body2, body3, tgl: tglSekarang };
 };
 
 function createPDF(r) {
   const doc = new jsPDF();
   const info = getFullText(r, 'PDF');
+  
+  // Header PDF
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 105, 15, {align: "center"});
+  doc.text("UP3 KLATEN", 105, 20, {align: "center"});
+  doc.text("ULP TULUNG", 105, 25, {align: "center"});
+  
+  doc.setFontSize(11);
+  doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA", 105, 35, {align: "center"});
+  doc.text("SAMBUNGAN TENAGA LISTRIK", 105, 40, {align: "center"});
+  
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text("==========================================", 105, 45, {align: "center"});
+  
+  let y = 55;
+  doc.text("Kepada Yth.", 15, y);
+  y += 6;
+  doc.text(`Nama : ${r.nama}`, 15, y);
+  y += 6;
+  doc.text(`ID. Pelanggan : ${r.idpel}`, 15, y);
+  y += 6;
+  doc.text(`Alamat : ${r.alamat || '-'}`, 15, y);
+  y += 6;
+  doc.text(`Tarip / Daya : ${r.tarif} / ${r.daya}`, 15, y);
+  y += 6;
+  doc.text(`Koked : ${r.koked}`, 15, y);
+  
+  y += 10;
+  doc.text(`Rekening : ${info.periode}`, 15, y);
+  y += 6;
+  doc.text(`Rp. : ${parseIDR(r.rptag).toLocaleString("id-ID")}`, 15, y);
+  y += 6;
+  doc.text(`Jumlah Biaya Keterlambatan s.d bulan : ${info.blnIni}`, 15, y);
+  y += 6;
+  doc.text(`Rp. : ${parseIDR(r.rpbk).toLocaleString("id-ID")}`, 15, y);
+  
+  y += 8;
+  doc.setFont(undefined, 'bold');
+  doc.text(`Jumlah Tunggakan (belum termasuk biaya Administrasi)`, 15, y);
+  y += 6;
+  doc.text(`Rp. : ${parseIDR(r.jumlah).toLocaleString("id-ID")}`, 15, y);
+  
+  y += 10;
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(8.5);
+  let p1 = doc.splitTextToSize(info.body1, 180); doc.text(p1, 15, y); y += (p1.length * 4) + 6;
+  let p2 = doc.splitTextToSize(info.body2, 180); doc.text(p2, 15, y); y += (p2.length * 4) + 6;
+  let p3 = doc.splitTextToSize(info.body3, 180); doc.text(p3, 15, y);
+  
+  y += (p3.length * 4) + 10;
+  doc.setFont(undefined, 'bold');
+  doc.text("UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS", 105, y, {align: "center"});
+  
+  y += 15;
+  doc.text(`TULUNG, ${info.tgl}`, 105, y, {align: "center"});
+  y += 6;
+  doc.text("MANAGER", 105, y, {align: "center"});
+  y += 5;
+  doc.setFontSize(9);
+  doc.text("MARTONO AJI PRABOWO", 105, y, {align: "center"});
+  
+  y += 20;
   doc.setFontSize(8);
-  doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 15, 15);
-  doc.text("UP3 KLATEN", 15, 19); doc.text("ULP TULUNG", 15, 23); doc.text("NO. TUL :", 150, 19);
-  doc.setFont(undefined, 'bold'); doc.setFontSize(10);
-  doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK", 105, 33, {align: "center"});
-  doc.setFont(undefined, 'normal'); doc.setFontSize(9);
-  doc.text("===================================================================================", 105, 36, {align: "center"});
-  doc.text("Kepada Yth.", 15, 45);
-  doc.text(`Nama             : ${r.nama}`, 15, 50);
-  doc.text(`ID. Pelanggan    : ${r.idpel}`, 15, 55);
-  doc.text(`Alamat           : ${r.alamat || '-'}`, 15, 60);
-  doc.text(`Tarip / Daya     : ${r.tarif} / ${r.daya}`, 15, 65);
-  doc.text(`Koked : ${r.koked}`, 120, 55);
-  doc.text(`Rekening : ${info.periode}`, 15, 80);
-  doc.text(`Rp. :`, 150, 80); doc.text(parseIDR(r.rptag).toLocaleString("id-ID"), 190, 80, {align: "right"});
-  doc.text(`Jumlah Biaya Keterlambatan s.d bulan : ${info.blnIni}`, 15, 85);
-  doc.text(`Rp. :`, 150, 85); doc.text(parseIDR(r.rpbk).toLocaleString("id-ID"), 190, 85, {align: "right"});
-  doc.setFont(undefined, 'bold');
-  doc.text(`Jumlah Tunggakan (belum termasuk biaya Administrasi)`, 15, 92);
-  doc.text(`Rp. :`, 150, 92); doc.text(parseIDR(r.jumlah).toLocaleString("id-ID"), 190, 92, {align: "right"});
-  doc.setFont(undefined, 'normal'); doc.setFontSize(8.5);
-  let p1 = doc.splitTextToSize(info.body1, 180); doc.text(p1, 15, 102);
-  let p2 = doc.splitTextToSize(info.body2, 180); doc.text(p2, 15, 114);
-  let p3 = doc.splitTextToSize(info.body3, 180); doc.text(p3, 15, 130);
-  doc.setFont(undefined, 'bold');
-  doc.text("UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS", 15, 150);
-  doc.text(`TULUNG, ${info.tgl}`, 145, 160);
-  doc.text("MANAGER", 155, 165);
-  doc.text("MARTONO AJI PRABOWO", 145, 190);
-  doc.setFontSize(7); doc.setFont(undefined, 'normal');
-  doc.text("A5 TUL VI-01/PETUGAS PEMUTUS : ..................................", 15, 210);
+  doc.setFont(undefined, 'normal');
+  doc.text("ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN", 105, y, {align: "center"});
+  
   doc.save(`TUL_${r.idpel}.pdf`);
 }
 
 /* ================= FITUR INVOICE BARU ================= */
 function renderInvoice() {
   sortState = { key: null, asc: true };
-  // Kumpulkan kolom unik dari data untuk header dinamis jika perlu, tapi kita pakai fixed untuk invoice
   let h = `
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h6 class="m-0">Data Invoice</h6>
@@ -204,48 +254,33 @@ function renderInvoice() {
 }
 
 function drawInvoiceTable(data) {
-  // Fungsi sorting untuk Invoice
   window.triggerSortInv = (key) => {
     if (sortState.key === key) sortState.asc = !sortState.asc; else { sortState.key = key; sortState.asc = true; }
     const sorted = [...data].sort((a, b) => {
       let v1 = a[key] || "", v2 = b[key] || "";
-      // Cek jika angka
-      if (!isNaN(parseFloat(v1)) && !isNaN(parseFloat(v2)) && isFinite(key)) { 
-         // Jika key numeric header murni, tapi biasanya key string
-      }
       return sortState.asc ? String(v1).localeCompare(String(v2), undefined, {numeric: true}) : String(v2).localeCompare(String(v1), undefined, {numeric: true});
     });
     drawInvoiceTable(sorted);
   };
   
   const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-
-  // Membuat Header berdasarkan kolom pertama (asumsi struktur data invoice konsisten)
-  // Kita ambil keys dari baris pertama data sebagai header
   const headers = data.length > 0 ? Object.keys(data[0]) : [];
   
   let tableHtml = `<div class="table-responsive"><table class="table table-sm table-bordered" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr>`;
-  
-  // Render Header
   headers.forEach(key => {
-    // Normalisasi key agar lebih rapi (misal: id_pelanggan -> ID PELANGGAN)
     let label = key.toUpperCase().replace(/_/G, ' ');
     tableHtml += `<th class="clickable" onclick="triggerSortInv('${key}')">${label}${icon(key)}</th>`;
   });
-  
   tableHtml += `</tr></thead><tbody>`;
 
-  // Render Body
   data.forEach(r => {
     tableHtml += `<tr>`;
     headers.forEach(key => {
       let val = r[key] || "";
-      // Highlight jika ini kolom status (opsional)
       if(key.toLowerCase().includes('status')) {
          let badgeClass = val.toLowerCase().includes('lunas') ? 'badge-lunas' : 'badge-belum';
          val = `<span class="badge ${badgeClass}">${val}</span>`;
       } else if (key.toLowerCase().includes('rp') || key.toLowerCase().includes('jumlah') || key.toLowerCase().includes('biaya')) {
-         // Format angka jika terdeteksi sebagai uang
          let num = parseIDR(val);
          if(num > 0) val = `<span class="text-end d-block">${num.toLocaleString("id-ID")}</span>`;
       }
@@ -344,7 +379,6 @@ function showCardsByData(id) {
 }
 
 function exportCurrentView(filenamePrefix) {
-  // Digunakan untuk both Tunggakan dan Invoice
   let dataToExport = currentSheet === 'invoice' ? allData : currentDetail;
   let fileName = currentSheet === 'invoice' ? "Invoice_ULP_Tulung.xlsx" : `Rekap_${currentTitle}.xlsx`;
 
@@ -353,7 +387,6 @@ function exportCurrentView(filenamePrefix) {
   XLSX.writeFile(wb, fileName);
 }
 
-// Start
 loadSheet("lembar1");
 </script>
 </body>
