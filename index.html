@@ -55,10 +55,19 @@ const parseDate = (str) => {
 const isLunas = r => r.tgl_lunas && r.tgl_lunas.trim() !== "" && r.tgl_lunas !== "-";
 
 function loadSheet(k) {
-  currentSheet = k; historyStack = []; currentPetugas = "Semua"; 
+  currentSheet = k; 
+  historyStack = []; 
+  currentPetugas = "Semua"; 
+  
+  // Reset tampilan tab aktif
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + k).classList.add("active");
-  fetch(SHEETS[k].url).then(r => r.text()).then(csv => {
+  
+  // --- BAGIAN INI DITAMBAHKAN ---
+  // Menambahkan penanda waktu unik agar browser tidak menyimpan cache data lama
+  const urlAntiCache = SHEETS[k].url + "&t=" + new Date().getTime();
+
+  fetch(urlAntiCache).then(r => r.text()).then(csv => {
     allData = Papa.parse(csv, {header: true, skipEmptyLines: true}).data;
     renderPetugas();
   });
@@ -246,4 +255,5 @@ loadSheet("lembar1");
 </script>
 </body>
 </html>
+
 
